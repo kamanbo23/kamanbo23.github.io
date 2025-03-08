@@ -85,4 +85,4 @@ After deploying the database, you need to initialize it and create an admin user
 
 1. Connect to your deployed backend URL
 2. Run the admin creation endpoint: `/admin/create` with the appropriate JSON payload
-3. Or use the provided scripts: 
+3. Or use the provided scripts: # re
