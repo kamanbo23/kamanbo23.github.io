@@ -1,0 +1,403 @@
+/* Modern Auth Pages Styling */
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+/* Background decoration */
+.login-container::before, 
+.login-container::after {
+    content: '';
+    position: absolute;
+    width: 50vmax;
+    height: 50vmax;
+    border-radius: 50%;
+    filter: blur(120px);
+    z-index: 0;
+    opacity: 0.15;
+    animation: float 20s infinite alternate ease-in-out;
+}
+
+.login-container::before {
+    background: radial-gradient(circle, #4f46e5 0%, transparent 70%);
+    top: -20vmax;
+    right: -20vmax;
+    animation-delay: -5s;
+}
+
+.login-container::after {
+    background: radial-gradient(circle, #10b981 0%, transparent 70%);
+    bottom: -20vmax;
+    left: -20vmax;
+}
+
+@keyframes float {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    100% {
+        transform: translate(5%, 5%) rotate(5deg);
+    }
+}
+
+.login-card {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 3rem;
+    border-radius: 1.5rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    width: 100%;
+    max-width: 450px;
+    position: relative;
+    z-index: 1;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+}
+
+.login-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, transparent, rgba(79, 70, 229, 0.1), transparent);
+    transform: translateX(-100%);
+    animation: shimmer 2.5s infinite;
+    z-index: -1;
+}
+
+@keyframes shimmer {
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.register-card {
+    max-width: 500px;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.login-header h2 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    background: linear-gradient(135deg, #818cf8 0%, #4f46e5 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+}
+
+.login-header p {
+    color: #000203;
+    font-size: 1.1rem;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+}
+
+.form-group {
+    position: relative;
+}
+
+.input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon {
+    position: absolute;
+    left: 1.25rem;
+    color: #818cf8;
+    font-size: 1.25rem;
+    transition: all 0.3s ease;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 1.15rem 1.25rem 1.15rem 3.5rem;
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    background: rgba(15, 23, 42, 0.7);
+    border-radius: 0.75rem;
+    font-size: 1rem;
+    color: #0b0000;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.input-group input::placeholder {
+    color: #000101;
+    opacity: 0.9;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
+    background: rgba(30, 41, 59, 0.6);
+    color: #ffffff;
+}
+
+.input-group input:focus + .input-icon {
+    color: #4f46e5;
+    transform: scale(1.1);
+}
+
+.input-group input:disabled {
+    background: rgba(30, 41, 59, 0.2);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.error-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: 0.75rem;
+    color: #fca5a5;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.error-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+    color: #ef4444;
+}
+
+.login-button {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1.15rem;
+    background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+    color: white;
+    border: none;
+    border-radius: 0.75rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.login-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transform: translateX(-100%);
+}
+
+.login-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.login-button:hover::before {
+    transform: translateX(100%);
+    transition: transform 0.75s ease;
+}
+
+.login-button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.login-button:disabled {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    cursor: not-allowed;
+}
+
+.button-icon {
+    font-size: 1.25rem;
+    transition: transform 0.3s ease;
+}
+
+.login-button:hover .button-icon {
+    transform: translateX(4px);
+}
+
+.form-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+    color: #cbd5e1;
+    font-size: 1rem;
+}
+
+.form-footer a {
+    color: #a5b4fc;
+    text-decoration: none;
+    font-weight: 500;
+    margin-left: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.form-footer a:hover {
+    color: #4f46e5;
+    text-decoration: underline;
+}
+
+/* Enhanced responsiveness */
+@media (max-width: 640px) {
+    .login-container {
+        padding: 1.5rem;
+    }
+
+    .login-card {
+        padding: 2rem;
+        border-radius: 1.25rem;
+    }
+
+    .login-header h2 {
+        font-size: 1.75rem;
+    }
+
+    .login-header p {
+        font-size: 1rem;
+    }
+    
+    .input-group input {
+        padding: 1rem 1rem 1rem 3rem;
+    }
+}
+
+/* Password strength indicator */
+.password-strength {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.strength-bars {
+    display: flex;
+    gap: 4px;
+}
+
+.strength-bar {
+    height: 4px;
+    flex: 1;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.2);
+    transition: background-color 0.3s ease;
+}
+
+.strength-bar.active {
+    background-color: var(--color-primary);
+}
+
+.password-strength span {
+    font-size: 0.85rem;
+    color: #e2e8f0;
+    transition: color 0.3s ease;
+    font-weight: 500;
+}
+
+.password-strength span.weak {
+    color: #f87171;
+    font-weight: 600;
+}
+
+.password-strength span.medium {
+    color: #fbbf24;
+    font-weight: 600;
+}
+
+.password-strength span.strong {
+    color: #4ade80;
+    font-weight: 600;
+}
+
+.confirm-icon {
+    position: absolute;
+    right: 1.25rem;
+    color: #4ade80;
+    font-size: 1.25rem;
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Form labels */
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #f1f5f9;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+/* Add helper text style */
+.form-helper-text {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    transition: color 0.3s ease;
+}
+
+.form-helper-text.warning {
+    color: #fcd34d;
+}
+
+.form-helper-text.error {
+    color: #f87171;
+}
+
+.form-helper-text.success {
+    color: #4ade80;
+}
+
+/* Fix white-on-white text in login/register input fields - make text BLACK */
+.auth-form input {
+    color: #000000; /* Pure black text for input fields */
+    background-color: rgba(255, 255, 255, 0.95); /* Nearly solid white background */
+    border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+.auth-form input::placeholder {
+    color: #64748b; /* Medium gray for placeholders */
+}
+
+.auth-form input:focus {
+    border-color: #8b5cf6;
+    background-color: #ffffff; /* Pure white background when focused */
+    color: #000000; /* Pure black text when focused */
+}
+
+/* Also fix potentially white text in all form elements */
+.auth-form textarea, 
+.auth-form select {
+    color: #000000; /* Pure black text */
+    background-color: rgba(255, 255, 255, 0.95);
+}
+
+.auth-form textarea::placeholder, 
+.auth-form select::placeholder {
+    color: #64748b;
+}
+
+/* Fix any other potential white-on-white issues */
+.auth-form .helper-text,
+.auth-form .info-text {
+    color: #cbd5e1;
+} 
