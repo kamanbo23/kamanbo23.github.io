@@ -21,24 +21,6 @@ services:
         value: 30
       - key: PORT
         value: 8000
-      - key: RENDER_EXTERNAL_URL
-        sync: false
-
-  # Frontend static site as a web service
-  - type: web
-    name: researchapp-web
-    runtime: node
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    startCommand: npx serve -s build -l $PORT
-    plan: free
-    autoDeploy: false
-    envVars:
-      - key: REACT_APP_API_URL
-        fromService:
-          name: researchapp-api
-          type: web
-          envVarKey: RENDER_EXTERNAL_URL
 
 databases:
   - name: postgres
