@@ -617,3 +617,11 @@ def apply_for_opportunity(opportunity_id: int, db: Session = Depends(get_db)):
     db_opportunity.applications += 1
     db.commit()
     return {"message": "Application recorded"}
+
+
+# This code is used when running the application directly
+# It ensures the app binds to the PORT environment variable for Render deployment
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 10000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
