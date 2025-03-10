@@ -11,7 +11,7 @@ const CreatePost = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('http://localhost:8000/posts/create_post', formData);
+            await axios.post('https://kamanbo23-github-io.onrender.com/posts/create_post', formData);
             alert('Post created successfully!');
             setFormData({ title: '', content: '', author_id: '' });
         } catch (error) {

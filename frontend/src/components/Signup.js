@@ -11,7 +11,7 @@ const Signup = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await axios.post('http://localhost:8000/users/signup', formData);
+            const response = await axios.post('https://kamanbo23-github-io.onrender.com/users/signup', formData);
             alert(`User created: ${response.data.username}`);
             setFormData({ username: '', email: '', password: '' });
         } catch (error) {

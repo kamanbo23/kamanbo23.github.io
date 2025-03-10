@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Use environment variable for API URL or fallback to localhost for development
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+// Use environment variable for API URL or fallback to the deployed Render backend
+const API_URL = process.env.REACT_APP_API_URL || 'https://kamanbo23-github-io.onrender.com';
 
 // Create axios instance with base URL
 const api = axios.create({
