@@ -17,6 +17,11 @@ load_dotenv()
 
 # Use SQLite by default for local development
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///app.db")
+
+# Render uses 'postgres://' but SQLAlchemy requires 'postgresql://'
+if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
 DEBUG_SQL = os.getenv("DEBUG_SQL", "False").lower() in ('true', '1', 't')
 
 # Create engine with appropriate parameters based on the database type

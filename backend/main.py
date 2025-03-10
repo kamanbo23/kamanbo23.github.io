@@ -16,10 +16,17 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Tech Events API")
 
-# Configure CORS for local development
+# Configure CORS for both development and production
+# CORS_ORIGINS should be a comma-separated list in .env or environment variables
+cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3005,http://127.0.0.1:3000")
+cors_origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+
+# Display configured origins for debugging
+print(f"Configured CORS origins: {cors_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3005", "http://127.0.0.1:3000"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
