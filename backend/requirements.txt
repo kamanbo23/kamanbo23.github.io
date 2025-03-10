@@ -1,3 +1,5 @@
+# CORE REQUIREMENTS - REQUIRED FOR DEPLOYMENT
+# =======================================
 # Web Framework
 fastapi==0.115.11
 uvicorn==0.27.0
@@ -9,7 +11,7 @@ pydantic_core==2.27.2
 # Database
 SQLAlchemy==2.0.38
 alembic==1.14.1  # For database migrations
-psycopg2-binary==2.9.9  # PostgreSQL driver (for production)
+psycopg2-binary==2.9.9  # PostgreSQL driver
 
 # Authentication
 passlib==1.7.4
@@ -56,7 +58,7 @@ python-dateutil==2.9.0.post0
 pytz==2025.1
 tzdata==2025.1
 
-# Flask (optional, can be removed if not used)
+# Flask Dependencies (if used in your app)
 Flask==3.1.0
 Flask-SQLAlchemy==3.1.1
 Jinja2==3.1.5
@@ -64,30 +66,39 @@ Mako==1.3.9
 MarkupSafe==3.0.2
 Werkzeug==3.1.3
 
-# Data Science/ML Libraries (can be removed if not used in production)
-contourpy==1.3.0
-cycler==0.12.1
-filelock==3.17.0
-fonttools==4.55.8
-fsspec==2025.2.0
-geographiclib==2.0
-geopy==2.4.1
-joblib==1.4.2
-kiwisolver==1.4.7
-macholib==1.15.2
-matplotlib==3.9.4
-mpmath==1.3.0
-networkx==3.2.1
-nltk==3.9.1
-numpy==2.0.2
-packaging==24.2
-pandas==2.2.3
-pillow==11.1.0
-pyparsing==3.2.1
-redis==5.2.1
-regex==2024.11.6
-rsa==4.9
-spotipy==2.25.0
-sympy==1.13.1
-torch==2.6.0
-tqdm==4.67.1
+# COMMENTED OUT - NOT REQUIRED FOR INITIAL DEPLOYMENT
+# =================================================
+# These libraries are large and may cause deployment timeouts
+# Uncomment only what you absolutely need for your application to function
+
+# # Data Processing Libraries
+# numpy==2.0.2
+# pandas==2.2.3
+
+# # ML and Data Science Libraries
+# # torch==2.6.0  # Very large package (700+ MB)
+# # matplotlib==3.9.4
+# # nltk==3.9.1
+# # joblib==1.4.2
+# # sympy==1.13.1
+# # pillow==11.1.0
+# # redis==5.2.1
+# # spotipy==2.25.0
+# # networkx==3.2.1
+
+# # Supporting Libraries for Data Science
+# # contourpy==1.3.0
+# # cycler==0.12.1
+# # filelock==3.17.0
+# # fonttools==4.55.8
+# # fsspec==2025.2.0
+# # geographiclib==2.0
+# # geopy==2.4.1
+# # kiwisolver==1.4.7
+# # macholib==1.15.2
+# # mpmath==1.3.0
+# # packaging==24.2
+# # pyparsing==3.2.1
+# # regex==2024.11.6
+# # rsa==4.9
+# # tqdm==4.67.1
