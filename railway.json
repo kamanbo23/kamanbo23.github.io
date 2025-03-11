@@ -7,6 +7,9 @@
     "numReplicas": 1,
     "healthcheckPath": "/health",
     "healthcheckTimeout": 10,
-    "restartPolicyType": "ON_FAILURE"
+    "restartPolicyType": "ON_FAILURE",
+    "env": {
+      "PORT": "8000"
+    }
   }
 } 

@@ -1,14 +1,14 @@
 [phases.setup]
-nixPkgs = ["python39", "gcc", "libc6-dev"]
+nixPkgs = ["python39", "gcc", "glibc.dev", "postgresql"]
 
 [phases.install]
 cmds = [
-  "cd backend && pip install -r requirements.txt"
+  "cd backend && pip install --no-cache-dir -r requirements.txt"
 ]
 
 [phases.build]
 cmds = [
-  "cd backend && python -c 'print(\"Build successful!\")'"
+  "cd backend && python -c \"import os, sys; sys.path.append('.'); from database import engine; import models; models.Base.metadata.create_all(bind=engine); print('Database tables created successfully!')\""
 ]
 
 [start]
