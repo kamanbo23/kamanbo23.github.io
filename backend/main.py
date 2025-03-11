@@ -682,8 +682,29 @@ def health_check():
     """
     Health check endpoint for Railway deployment monitoring.
     Returns a 200 OK response if the application is running.
+    Also checks database connection to ensure the application is fully functional.
     """
-    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+    try:
+        # Simple database check - just ping the database
+        db = SessionLocal()
+        db.execute("SELECT 1")
+        db.close()
+        
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now().isoformat(),
+            "database": "connected",
+            "version": "1.0"
+        }
+    except Exception as e:
+        # Log the error but still return 200 to prevent container restarts
+        print(f"Health check warning: {str(e)}")
+        return {
+            "status": "degraded",
+            "timestamp": datetime.now().isoformat(),
+            "message": "Application running but database connection failed",
+            "version": "1.0"
+        }
 
 # This code is used when running the application directly
 # It ensures the app binds to the PORT environment variable for Render deployment

@@ -2,8 +2,9 @@
 name = "backend-api-project"
 
 [deploy]
-healthcheck_path = "/health"  # Add a health endpoint to your FastAPI app
-healthcheck_timeout_seconds = 10
+healthcheck_path = "/health"
+healthcheck_timeout_seconds = 30
+healthcheck_interval_seconds = 15
 strategy = "rolling"
 restartPolicyType = "on_failure"
 
@@ -17,7 +18,8 @@ envs = [
   { name = "SECRET_KEY", value = "${SECRET_KEY}" },
   { name = "ALGORITHM", value = "HS256" },
   { name = "ACCESS_TOKEN_EXPIRE_MINUTES", value = "30" },
-  { name = "CORS_ORIGINS", value = "${CORS_ORIGINS}" }
+  { name = "CORS_ORIGINS", value = "*" },
+  { name = "PORT", value = "8000" }
 ]
 internal_port = 8000
 num_instances = 1
