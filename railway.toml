@@ -9,7 +9,7 @@ strategy = "rolling"
 [[services]]
 name = "backend-api"
 root_directory = "backend"
-dockerfile_path = "backend/Dockerfile"
+dockerfile_path = "Dockerfile"
 start_command = "./railway_start.sh"  # Use our startup script
 envs = [
   { name = "DATABASE_URL", value = "${RAILWAY_DATABASE_URL}" },
