@@ -684,27 +684,45 @@ def health_check():
     Returns a 200 OK response if the application is running.
     Also checks database connection to ensure the application is fully functional.
     """
+    import sys
+    import time
+    
+    start_time = time.time()
+    db_status = "unknown"
+    db_message = ""
+    
     try:
         # Simple database check - just ping the database
         db = SessionLocal()
         db.execute("SELECT 1")
         db.close()
-        
-        return {
-            "status": "healthy",
-            "timestamp": datetime.now().isoformat(),
-            "database": "connected",
-            "version": "1.0"
-        }
+        db_status = "connected"
     except Exception as e:
         # Log the error but still return 200 to prevent container restarts
-        print(f"Health check warning: {str(e)}")
-        return {
-            "status": "degraded",
-            "timestamp": datetime.now().isoformat(),
-            "message": "Application running but database connection failed",
-            "version": "1.0"
-        }
+        db_status = "error"
+        db_message = str(e)
+        print(f"Health check database error: {str(e)}", file=sys.stderr)
+    
+    # Calculate response time
+    response_time_ms = round((time.time() - start_time) * 1000)
+    
+    # Always return 200 OK to prevent container cycling
+    response = {
+        "status": "degraded" if db_status == "error" else "healthy",
+        "uptime": "ok",
+        "timestamp": datetime.now().isoformat(),
+        "database": db_status,
+        "version": "1.1",
+        "response_time_ms": response_time_ms
+    }
+    
+    if db_message:
+        response["db_message"] = db_message
+    
+    # Log the health check request and response
+    print(f"Health check: status={response['status']}, db={db_status}, time={response_time_ms}ms")
+    
+    return response
 
 # This code is used when running the application directly
 # It ensures the app binds to the PORT environment variable for Render deployment
