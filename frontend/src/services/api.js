@@ -38,7 +38,11 @@ export const authService = {
   },
   
   register: async (userData) => {
-    return api.post('/users/', userData);
+    return api.post('/users/', JSON.stringify(userData), {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
   },
   
   getCurrentUser: async () => {
