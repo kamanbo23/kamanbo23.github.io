@@ -16,7 +16,7 @@ psycopg2-binary==2.9.9  # PostgreSQL driver
 # Authentication
 passlib==1.7.4
 python-jose==3.4.0
-bcrypt==4.3.0
+bcrypt==3.2.2  # Pinning to a version that works well with passlib
 python-multipart==0.0.20  # For form data parsing
 
 # Utilities
