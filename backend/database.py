@@ -12,25 +12,28 @@ from dotenv import load_dotenv
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load environment variables
+# Load environment variables - in production, Railway will provide these
 load_dotenv()
 
-# Use SQLite by default for local development
+# Use SQLite by default for local development, Railway will provide DATABASE_URL in production
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///app.db")
 
-# Render uses 'postgres://' but SQLAlchemy requires 'postgresql://'
+# Railway uses 'postgres://' but SQLAlchemy requires 'postgresql://'
 if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
     DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
+logger.info(f"Using database: {DATABASE_URL.split('@')[0].split('//')[0]}/*****")
 
 DEBUG_SQL = os.getenv("DEBUG_SQL", "False").lower() in ('true', '1', 't')
 
 # Create engine with appropriate parameters based on the database type
 try:
     if DATABASE_URL.startswith('sqlite'):
+        # SQLite specific configuration
         engine = create_engine(
             DATABASE_URL,
             connect_args={"check_same_thread": False},
-            echo=DEBUG_SQL  # SQL query logging based on env variable
+            echo=DEBUG_SQL
         )
         
         # Add pragma for better SQLite performance
@@ -43,14 +46,16 @@ try:
             cursor.close()
             
     else:
+        # PostgreSQL configuration for Railway
         engine = create_engine(
             DATABASE_URL,
-            pool_size=5,
-            max_overflow=10,
-            pool_timeout=30,
-            pool_recycle=1800,
-            echo=DEBUG_SQL  # SQL query logging based on env variable
+            pool_size=10,
+            max_overflow=20,
+            pool_pre_ping=True,  # Help detect stale connections
+            pool_recycle=300,    # Recycle connections every 5 minutes
+            echo=DEBUG_SQL
         )
+        logger.info("Successfully configured PostgreSQL engine")
     
     logger.info(f"Connected to database: {DATABASE_URL.split('///')[0]}")
     

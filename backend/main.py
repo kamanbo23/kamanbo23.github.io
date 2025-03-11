@@ -673,6 +673,14 @@ def apply_for_opportunity(opportunity_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Application recorded"}
 
+# Add health check endpoint for Railway
+@app.get("/health")
+def health_check():
+    """
+    Health check endpoint for Railway deployment monitoring.
+    Returns a 200 OK response if the application is running.
+    """
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 # This code is used when running the application directly
 # It ensures the app binds to the PORT environment variable for Render deployment
