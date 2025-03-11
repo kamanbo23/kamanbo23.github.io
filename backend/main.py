@@ -17,20 +17,37 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Tech Events API")
 
 # Configure CORS for both development and production
-# CORS_ORIGINS should be a comma-separated list in .env or environment variables
-cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3005,http://127.0.0.1:3000")
-cors_origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
-
-# Display configured origins for debugging
-print(f"Configured CORS origins: {cors_origins}")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# In production, we'll be more permissive to ensure frontend can connect
+# from different origins (Netlify, Vercel, etc.)
+if os.getenv("RENDER") or os.getenv("PRODUCTION"):
+    # In production, we allow all origins for now
+    print("Running in production mode - allowing all origins for CORS")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Allow all origins in production
+        allow_credentials=False,  # Must be False when allow_origins=["*"]
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+        max_age=86400,  # Cache preflight requests for 24 hours
+    )
+else:
+    # In development, use environment variable or default to localhost entries
+    cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3005,http://127.0.0.1:3000")
+    cors_origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+    
+    # Display configured origins for debugging
+    print(f"Configured CORS origins in development: {cors_origins}")
+    
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["*"],
+        max_age=86400,  # Cache preflight requests for 24 hours
+    )
 
 # Security configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")  # In production, use environment variable
