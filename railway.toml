@@ -7,7 +7,7 @@ healthcheck_timeout_seconds = 10
 strategy = "rolling"
 
 [[services]]
-name = "backend"
+name = "backend-api"
 root_directory = "backend"
 dockerfile_path = "backend/Dockerfile"
 start_command = "./railway_start.sh"  # Use our startup script
@@ -15,21 +15,10 @@ envs = [
   { name = "DATABASE_URL", value = "${RAILWAY_DATABASE_URL}" },
   { name = "SECRET_KEY", value = "${SECRET_KEY}" },
   { name = "ALGORITHM", value = "HS256" },
-  { name = "ACCESS_TOKEN_EXPIRE_MINUTES", value = "30" }
+  { name = "ACCESS_TOKEN_EXPIRE_MINUTES", value = "30" },
+  { name = "CORS_ORIGINS", value = "${CORS_ORIGINS}" }
 ]
 internal_port = 8000
-num_instances = 1
-[services.http_route]
-public_routes = ["/api/*", "/docs", "/redoc", "/openapi.json"]
-
-[[services]]
-name = "frontend"
-root_directory = "frontend"
-dockerfile_path = "frontend/Dockerfile"
-envs = [
-  { name = "REACT_APP_API_URL", value = "${RAILWAY_BACKEND_URL}" }
-]
-internal_port = 80
 num_instances = 1
 [services.http_route]
 public_routes = ["/*"] 

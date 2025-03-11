@@ -16,6 +16,9 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Tech Events API")
 
+# Get allowed origins from environment variable or use defaults
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "https://your-netlify-app.netlify.app,http://localhost:3000").split(",")
+
 # Simplified CORS configuration - simply allow everything in production
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -55,7 +58,7 @@ app.add_middleware(CORSDebugMiddleware)
 # Then add the standard FastAPI CORS middleware (as a backup)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
