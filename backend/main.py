@@ -16,35 +16,69 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Tech Events API")
 
-# Configure CORS to allow all origins in any environment
-# This is necessary for the frontend to connect from Netlify
-print("Configuring CORS to allow all origins")
+# Simplified CORS configuration - simply allow everything in production
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
 
-# Get the Netlify domain from environment or use the default
-netlify_domain = os.getenv("NETLIFY_DOMAIN", "https://silver-pudding-06172d.netlify.app")
+class CORSDebugMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if request.method == "OPTIONS":
+            # Handle OPTIONS requests directly
+            response = Response(
+                content="",
+                status_code=200,
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "*",
+                    "Access-Control-Allow-Headers": "*",
+                    "Access-Control-Allow-Credentials": "true",
+                    "Access-Control-Max-Age": "86400",
+                }
+            )
+            return response
+        else:
+            # Process other requests normally
+            response = await call_next(request)
+            # Add CORS headers to all responses
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Methods"] = "*"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            return response
 
-# Use a specific list of origins that includes both localhost and the Netlify domain
-origins = [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:3002",
-    "http://localhost:3005",
-    "http://127.0.0.1:3000",
-    netlify_domain,
-    "https://silver-pudding-06172d.netlify.app",  # Hardcoded Netlify domain as backup
-]
+# First, add our custom CORS middleware (this will run first)
+app.add_middleware(CORSDebugMiddleware)
 
-print(f"Configured CORS origins: {origins}")
-
+# Then add the standard FastAPI CORS middleware (as a backup)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods
-    allow_headers=["*"],  # Allow all headers
-    expose_headers=["*"],  # Expose all headers
-    max_age=86400,  # Cache preflight requests for 24 hours
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=86400,
 )
+
+# Add a simple CORS debug endpoint
+@app.options("/cors-debug")
+async def cors_debug_options():
+    return JSONResponse(
+        content={"message": "CORS preflight handled successfully"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
+        }
+    )
+
+@app.get("/cors-debug")
+async def cors_debug():
+    return {"cors_debug": True, "message": "CORS is working!"}
 
 # Security configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")  # In production, use environment variable
