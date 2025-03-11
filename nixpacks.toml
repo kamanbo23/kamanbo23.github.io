@@ -1,9 +1,10 @@
 [phases.setup]
-nixPkgs = ["python39", "python39Packages.pip", "gcc", "glibc.dev", "postgresql"]
+nixPkgs = ["python39", "python39Packages.virtualenv", "gcc", "glibc.dev", "postgresql"]
 
 [phases.install]
 cmds = [
-  "python3 -m pip install --upgrade pip",
+  "python3 -m ensurepip --upgrade",
+  "python3 -m pip install --upgrade pip setuptools wheel",
   "cd backend && python3 -m pip install --no-cache-dir -r requirements.txt"
 ]
 
