@@ -25,11 +25,16 @@ api.interceptors.request.use(
 // Auth services
 export const authService = {
   login: async (username, password) => {
-    const formData = new FormData();
-    formData.append('username', username);
-    formData.append('password', password);
+    // OAuth2 expects x-www-form-urlencoded format, not FormData
+    const params = new URLSearchParams();
+    params.append('username', username);
+    params.append('password', password);
     
-    return api.post('/token', formData);
+    return api.post('/token', params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
   },
   
   register: async (userData) => {
