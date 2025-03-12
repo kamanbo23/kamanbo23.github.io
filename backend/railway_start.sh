@@ -9,6 +9,29 @@ echo "Node: $(hostname)"
 export PORT="${PORT:-8080}"
 echo "PORT environment variable is now set to: $PORT"
 
+# Debug DATABASE_URL environment variable (safely masking credentials)
+if [ -n "$DATABASE_URL" ]; then
+  # Extract just the type (postgresql, sqlite, etc) without credentials
+  DB_TYPE=$(echo $DATABASE_URL | cut -d ':' -f 1)
+  echo "Database type detected: $DB_TYPE"
+else
+  echo "WARNING: DATABASE_URL environment variable is not set!"
+fi
+
+# Check for Railway's database URL format
+if [ -n "$RAILWAY_DATABASE_URL" ]; then
+  DB_TYPE=$(echo $RAILWAY_DATABASE_URL | cut -d ':' -f 1)
+  echo "Railway database type detected: $DB_TYPE"
+  
+  # If DATABASE_URL isn't set but RAILWAY_DATABASE_URL is, set it
+  if [ -z "$DATABASE_URL" ]; then
+    echo "Setting DATABASE_URL from RAILWAY_DATABASE_URL"
+    export DATABASE_URL="$RAILWAY_DATABASE_URL"
+  fi
+else
+  echo "WARNING: RAILWAY_DATABASE_URL environment variable is not set!"
+fi
+
 # Print environment information (masking sensitive data)
 DB_URL_MASKED="$(echo $DATABASE_URL | sed 's/[:@\/].*/:***@***\/***/')"
 echo "Environment variables:"
@@ -57,6 +80,10 @@ import os, sys, time
 sys.path.append('.')
 
 try:
+    # Print environment variables for debugging
+    print(f'Environment DATABASE_URL: {os.environ.get(\"DATABASE_URL\", \"Not set\")}')
+    print(f'Environment RAILWAY_DATABASE_URL: {os.environ.get(\"RAILWAY_DATABASE_URL\", \"Not set\")}')
+    
     from database import engine, SessionLocal
     from sqlalchemy import text
     import models
@@ -65,9 +92,14 @@ try:
     # Try to open a test connection first
     print('Testing database connection...')
     db = SessionLocal()
-    db.execute(text('SELECT 1'))  # Use text() for proper SQL construction
+    result = db.execute(text('SELECT 1')).scalar()
+    print(f'Database connection test result: {result}')
     db.close()
     print('Database connection test successful')
+    
+    # Get engine URL for debugging
+    print(f'Engine URL: {engine.url}')
+    print(f'Engine driver: {engine.driver}')
     
     # Create tables
     print('Creating database tables...')
