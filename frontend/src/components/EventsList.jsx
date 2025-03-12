@@ -45,6 +45,7 @@ const EventsList = () => {
             try {
                 setLoading(true);
                 const response = await eventService.getEvents();
+                console.log("Fetched events:", response.data); // Debug log to see the actual data structure
                 setEvents(response.data);
                 setLoading(false);
             } catch (error) {
@@ -58,13 +59,21 @@ const EventsList = () => {
 
     // Filter events based on search term and selections
     const filteredEvents = events.filter(event => {
-        const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                              event.description.toLowerCase().includes(searchTerm.toLowerCase());
+        // Handle property access safely to prevent errors if properties don't exist
+        const eventTitle = event.title || event.name || "";
+        const eventDescription = event.description || "";
+        const eventType = event.type || event.event_type || "";
+        const techStack = event.tech_stack || [];
         
-        const matchesType = selectedType === '' || event.event_type === selectedType;
+        const matchesSearch = 
+            eventTitle.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            eventDescription.toLowerCase().includes(searchTerm.toLowerCase());
+        
+        const matchesType = selectedType === '' || 
+            eventType.toLowerCase() === selectedType.toLowerCase();
         
         const matchesTechStack = selectedTechStack === '' || 
-                                event.tech_stack.includes(selectedTechStack);
+            techStack.some(tech => tech.toLowerCase().includes(selectedTechStack.toLowerCase()));
         
         return matchesSearch && matchesType && matchesTechStack;
     });
@@ -96,8 +105,22 @@ const EventsList = () => {
 
     // Format date to readable string
     const formatDate = (dateString) => {
+        if (!dateString) return "Date TBD";
         const options = { year: 'numeric', month: 'long', day: 'numeric' };
         return new Date(dateString).toLocaleDateString(undefined, options);
+    };
+
+    // Calculate duration between start_date and end_date
+    const calculateDuration = (startDate, endDate) => {
+        if (!startDate || !endDate) return "Duration TBD";
+        
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const diffTime = Math.abs(end - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 0) return "1 day";
+        return `${diffDays} day${diffDays > 1 ? 's' : ''}`;
     };
 
     return (
@@ -282,49 +305,49 @@ const EventsList = () => {
                                     >
                                         <div className="event-card-content">
                                             <div className="event-tag-container">
-                                                <span className={`event-tag ${event.event_type.toLowerCase()}`}>
-                                                    {event.event_type}
+                                                <span className={`event-tag ${(event.type || event.event_type || "").toLowerCase()}`}>
+                                                    {event.type || event.event_type || "Event"}
                                                 </span>
-                                                {event.is_virtual && (
+                                                {(event.virtual || event.is_virtual) && (
                                                     <span className="event-tag virtual">Virtual</span>
                                                 )}
                                             </div>
                                             
-                                            <h3 className="event-title">{event.name}</h3>
+                                            <h3 className="event-title">{event.title || event.name || "Unnamed Event"}</h3>
                                             
                                             <div className="event-meta">
                                                 <div className="meta-item">
                                                     <FiCalendar className="meta-icon" />
-                                                    <span>{formatDate(event.date)}</span>
+                                                    <span>{formatDate(event.start_date || event.date)}</span>
                                                 </div>
                                                 
                                                 <div className="meta-item">
                                                     <FiClock className="meta-icon" />
-                                                    <span>{event.duration}</span>
+                                                    <span>{event.duration || calculateDuration(event.start_date, event.end_date)}</span>
                                                 </div>
                                                 
                                                 <div className="meta-item">
                                                     <FiMapPin className="meta-icon" />
-                                                    <span>{event.location || 'Online'}</span>
+                                                    <span>{event.location || event.venue || 'Online'}</span>
                                                 </div>
                                                 
                                                 <div className="meta-item">
                                                     <FiUsers className="meta-icon" />
-                                                    <span>{event.attendees_count || 0} attendees</span>
+                                                    <span>{event.attendees || event.attendees_count || 0} attendees</span>
                                                 </div>
                                             </div>
                                             
                                             <div className="event-tech-stack">
-                                                {event.tech_stack.map((tech, i) => (
+                                                {(event.tech_stack || []).map((tech, i) => (
                                                     <span key={i} className="tech-badge">{tech}</span>
                                                 ))}
                                             </div>
                                             
-                                            <p className="event-description">{event.description}</p>
+                                            <p className="event-description">{event.description || "No description available."}</p>
                                             
                                             <div className="event-footer">
                                                 <motion.a 
-                                                    href={event.registration_link} 
+                                                    href={event.registration_link || "#"} 
                                                     target="_blank" 
                                                     rel="noopener noreferrer"
                                                     className="btn btn-primary"
