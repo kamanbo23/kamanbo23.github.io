@@ -8,9 +8,10 @@ cmds = [
   "cd backend && python3 -m pip install --no-cache-dir -r requirements.txt"
 ]
 
+# Do not create tables at build time - this will be handled by railway_start.sh
 [phases.build]
 cmds = [
-  "cd backend && python3 -c \"import os, sys; sys.path.append('.'); from database import engine; import models; models.Base.metadata.create_all(bind=engine); print('Database tables created successfully!')\""
+  "echo 'Skipping table creation during build phase - will be handled at runtime'"
 ]
 
 [start]

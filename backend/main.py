@@ -13,15 +13,20 @@ from passlib.context import CryptContext
 import os
 import sys
 
-# Wrap database initialization in a try-except block to prevent crashing on startup
-try:
-    # Try to create tables but don't crash if it fails
-    models.Base.metadata.create_all(bind=engine)
-    print("Database tables created or verified successfully on startup")
-except Exception as e:
-    print(f"Warning: Could not create database tables on startup: {str(e)}", file=sys.stderr)
-    print("Application will continue to start up; tables will be created later if possible")
-    # Don't raise the exception - allow the app to start
+# Only create tables automatically if specifically requested by environment variable
+# This prevents conflicts with railway_start.sh which also creates tables
+if os.getenv("AUTOCREATE_TABLES", "").lower() in ("true", "1", "yes"):
+    try:
+        # Try to create tables but don't crash if it fails
+        print("Attempting to create database tables on startup...")
+        models.Base.metadata.create_all(bind=engine)
+        print("Database tables created or verified successfully on startup")
+    except Exception as e:
+        print(f"Warning: Could not create database tables on startup: {str(e)}", file=sys.stderr)
+        print("Application will continue to start up; tables will be created later if possible")
+        # Don't raise the exception - allow the app to start
+else:
+    print("Skipping automatic table creation - will be handled by startup script")
 
 app = FastAPI(title="Tech Events API")
 
