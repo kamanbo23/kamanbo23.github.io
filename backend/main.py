@@ -11,8 +11,17 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 import os
+import sys
 
-models.Base.metadata.create_all(bind=engine)
+# Wrap database initialization in a try-except block to prevent crashing on startup
+try:
+    # Try to create tables but don't crash if it fails
+    models.Base.metadata.create_all(bind=engine)
+    print("Database tables created or verified successfully on startup")
+except Exception as e:
+    print(f"Warning: Could not create database tables on startup: {str(e)}", file=sys.stderr)
+    print("Application will continue to start up; tables will be created later if possible")
+    # Don't raise the exception - allow the app to start
 
 app = FastAPI(title="Tech Events API")
 
