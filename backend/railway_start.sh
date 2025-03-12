@@ -5,6 +5,45 @@ echo "==================== RAILWAY APP STARTUP ===================="
 echo "Starting application in $(pwd) at $(date -u)"
 echo "Node: $(hostname)"
 
+# Install required dependencies
+echo "==================== INSTALLING DEPENDENCIES ===================="
+echo "Installing missing dependencies..."
+# Use verbose mode and catch errors
+pip install email-validator pydantic[email] --no-cache-dir -v || {
+    echo "❌ Failed to install dependencies with pip"
+    echo "Trying alternative installation method..."
+    python -m pip install email-validator pydantic[email] --no-cache-dir -v || {
+        echo "❌ Both installation methods failed. This is critical."
+        echo "Attempting emergency fix with pip install --user..."
+        pip install --user email-validator pydantic[email] --no-cache-dir -v
+    }
+}
+
+# Verify installation
+echo "Verifying email-validator installation..."
+if python -c "import email_validator; print(f'✅ email-validator {email_validator.__version__} successfully installed')" 2>/dev/null; then
+    echo "✅ Verification successful - email-validator is properly installed"
+else
+    echo "❌ Verification failed - email-validator still not accessible"
+    echo "Trying emergency installation directly in the application directory..."
+    pip install --target=. email-validator pydantic[email] --no-cache-dir
+    # Update Python path to include current directory
+    export PYTHONPATH=$PYTHONPATH:$(pwd)
+    echo "Updated PYTHONPATH: $PYTHONPATH"
+    
+    # Second verification
+    if python -c "import email_validator; print(f'✅ email-validator {email_validator.__version__} successfully installed')" 2>/dev/null; then
+        echo "✅ Emergency installation successful"
+    else
+        echo "❌ All installation attempts failed. Application may not start correctly."
+    fi
+fi
+
+# Display all installed packages for debugging
+echo "==================== INSTALLED PACKAGES ===================="
+pip list | grep -E 'email|validator|pydantic'
+echo "==========================================================="
+
 # Ensure PORT is correctly set - Railway seems to be setting it to 8080
 export PORT="${PORT:-8080}"
 echo "PORT environment variable is now set to: $PORT"
@@ -61,7 +100,7 @@ echo "- Python version: $(python --version 2>&1)"
 echo "- Working directory: $(pwd)"
 echo "- Python path: $PYTHONPATH"
 echo "- Available packages:"
-python -m pip list | grep -E 'sqlalchemy|fastapi|uvicorn|gunicorn|psycopg|asyncpg|alembic'
+python -m pip list | grep -E 'sqlalchemy|fastapi|uvicorn|gunicorn|psycopg|asyncpg|alembic|email-validator|pydantic'
 
 # Check if models.py exists and if so, create tables with retries
 if [ -f "models.py" ]; then
