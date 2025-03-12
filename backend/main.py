@@ -30,6 +30,43 @@ else:
 
 app = FastAPI(title="Tech Events API")
 
+# Add startup event to create default admin if none exists
+@app.on_event("startup")
+async def create_default_admin():
+    # Hardcoded admin credentials with user's requested values
+    default_admin_username = "monkeypox"  # User's requested username
+    default_admin_password = "hotcheetosaregreat"  # User's requested password
+    
+    try:
+        # Connect to the database
+        db = SessionLocal()
+        
+        # Check if any admin exists
+        admin_exists = db.query(models.Admin).first()
+        
+        if not admin_exists:
+            print(f"No admin users found. Creating default admin user: {default_admin_username}")
+            
+            # Hash the password
+            hashed_password = get_password_hash(default_admin_password)
+            
+            # Create admin
+            new_admin = models.Admin(
+                username=default_admin_username,
+                hashed_password=hashed_password
+            )
+            
+            db.add(new_admin)
+            db.commit()
+            print(f"Default admin user '{default_admin_username}' created successfully!")
+        else:
+            print("Admin user already exists. Skipping default admin creation.")
+    except Exception as e:
+        print(f"Error creating default admin: {str(e)}")
+        # Don't raise - allow application to start anyway
+    finally:
+        db.close()
+
 # Get allowed origins from environment variable or use defaults
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "https://your-netlify-app.netlify.app,http://localhost:3000").split(",")
 
