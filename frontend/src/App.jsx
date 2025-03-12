@@ -43,15 +43,20 @@ const LoadingScreen = ({ isLoading }) => {
           className="loading-screen"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          exit={{ opacity: 0, transition: { duration: 0.5, ease: 'easeInOut' } }}
           transition={{ duration: 0.5 }}
         >
           <motion.div className="loading-content">
             <motion.div 
               className="loading-logo"
               animate={{ 
-                scale: [1, 1.1, 1],
-                rotate: [0, 5, -5, 0]
+                scale: [1, 1.2, 1],
+                rotate: [0, 5, -5, 0],
+                boxShadow: [
+                  '0 0 0 rgba(79, 70, 229, 0)',
+                  '0 0 20px rgba(79, 70, 229, 0.7)',
+                  '0 0 0 rgba(79, 70, 229, 0)'
+                ]
               }}
               transition={{
                 duration: 2,
@@ -59,21 +64,88 @@ const LoadingScreen = ({ isLoading }) => {
                 repeatType: "loop"
               }}
             >
-              🔬
+              <span className="emoji-glow">🔬</span>
             </motion.div>
+            
             <motion.div 
-              className="loading-bar"
-              initial={{ width: "0%" }}
-              animate={{ width: "100%" }}
-              transition={{ duration: 1.5 }}
-            />
-            <motion.p
+              className="loading-bar-container"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <motion.div 
+                className="loading-bar"
+                initial={{ width: "0%" }}
+                animate={{ width: "100%" }}
+                transition={{ 
+                  duration: 1.5, 
+                  ease: "easeInOut"
+                }}
+              />
+              
+              <motion.div 
+                className="loading-bar-glow"
+                initial={{ x: "-100%", opacity: 0 }}
+                animate={{ x: "100%", opacity: [0, 1, 0] }}
+                transition={{ 
+                  duration: 1.5, 
+                  ease: "easeInOut"
+                }}
+              />
+            </motion.div>
+            
+            <motion.div
+              className="loading-messages"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
             >
-              Loading amazing research opportunities...
-            </motion.p>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+              >
+                Loading amazing research opportunities...
+              </motion.p>
+              
+              <motion.div 
+                className="loading-facts"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1 }}
+              >
+                <p>Did you know? Research drives over 70% of innovation in tech industries.</p>
+              </motion.div>
+            </motion.div>
+            
+            <motion.div 
+              className="loading-particles"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.7 }}
+              transition={{ delay: 0.5 }}
+            >
+              {[...Array(20)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="particle"
+                  initial={{ 
+                    x: Math.random() * 200 - 100,
+                    y: Math.random() * 200 - 100,
+                    opacity: 0
+                  }}
+                  animate={{ 
+                    x: Math.random() * 200 - 100,
+                    y: Math.random() * 200 - 100,
+                    opacity: Math.random() * 0.5 + 0.3
+                  }}
+                  transition={{
+                    duration: Math.random() * 5 + 3,
+                    repeat: Infinity,
+                    repeatType: "reverse"
+                  }}
+                />
+              ))}
+            </motion.div>
           </motion.div>
         </motion.div>
       )}
