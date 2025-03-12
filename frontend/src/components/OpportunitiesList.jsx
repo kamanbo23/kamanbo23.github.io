@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiCalendar, FiMapPin, FiDollarSign, FiBook, FiUsers, FiHeart, FiMail } from 'react-icons/fi';
+import { FiCalendar, FiMapPin, FiDollarSign, FiBook, FiUsers, FiHeart, FiMail, FiGlobe } from 'react-icons/fi';
 import { opportunityService } from '../services/api';
 import './OpportunitiesList.css';
 
@@ -260,13 +260,13 @@ const OpportunitiesList = () => {
                             <p className="description">{opportunity.description}</p>
 
                             <div className="contact">
-                                <FiMail className="icon" />
+                                <FiGlobe className="icon" />
                                 {opportunity.website ? (
                                     <a href={opportunity.website} target="_blank" rel="noopener noreferrer">
                                         {opportunity.website}
                                     </a>
                                 ) : (
-                                    opportunity.contact_email || 'No contact information provided'
+                                    'No website provided'
                                 )}
                             </div>
 
@@ -283,11 +283,12 @@ const OpportunitiesList = () => {
                                     className="apply-button"
                                     onClick={() => {
                                         handleApply(opportunity.id);
-                                        // Open website in new tab instead of email
-                                        if (opportunity.website) {
+                                        // Only open website in new tab, not email
+                                        if (opportunity.website && opportunity.website.trim() !== '') {
                                             window.open(opportunity.website, '_blank');
-                                        } else if (opportunity.contact_email) {
-                                            window.open(`mailto:${opportunity.contact_email}?subject=Application for ${opportunity.title}`, '_blank');
+                                        } else {
+                                            // Alert user if no website is available
+                                            alert("No application website available. Please contact the organization directly.");
                                         }
                                     }}
                                 >
