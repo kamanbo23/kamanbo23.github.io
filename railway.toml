@@ -20,9 +20,9 @@ envs = [
   { name = "ALGORITHM", value = "HS256" },
   { name = "ACCESS_TOKEN_EXPIRE_MINUTES", value = "30" },
   { name = "CORS_ORIGINS", value = "*" },
-  { name = "PORT", value = "8000" }
+  { name = "PORT", value = "8080" }
 ]
-internal_port = 8000
+internal_port = 8080
 num_instances = 1
 [services.http_route]
 public_routes = ["/*"] 

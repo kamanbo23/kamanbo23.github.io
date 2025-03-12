@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import models, schemas
 from database import engine, get_db, SessionLocal
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, text
 from sqlalchemy.sql import func
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
@@ -695,6 +695,7 @@ def health_check():
     """
     import sys
     import time
+    import os
     
     start_time = time.time()
     db_status = "unknown"
@@ -703,7 +704,7 @@ def health_check():
     try:
         # Simple database check - just ping the database
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))  # Use text() to properly construct the SQL
         db.close()
         db_status = "connected"
     except Exception as e:
@@ -715,27 +716,43 @@ def health_check():
     # Calculate response time
     response_time_ms = round((time.time() - start_time) * 1000)
     
+    # Get current port from environment or default
+    current_port = os.getenv("PORT", "8080")
+    
     # Always return 200 OK to prevent container cycling
     response = {
         "status": "degraded" if db_status == "error" else "healthy",
         "uptime": "ok",
         "timestamp": datetime.now().isoformat(),
         "database": db_status,
-        "version": "1.1",
-        "response_time_ms": response_time_ms
+        "version": "1.3",
+        "response_time_ms": response_time_ms,
+        "port": current_port
     }
     
     if db_message:
         response["db_message"] = db_message
     
     # Log the health check request and response
-    print(f"Health check: status={response['status']}, db={db_status}, time={response_time_ms}ms")
+    print(f"Health check: status={response['status']}, db={db_status}, port={current_port}, time={response_time_ms}ms")
     
     return response
 
 # This code is used when running the application directly
-# It ensures the app binds to the PORT environment variable for Render deployment
+# It ensures the app binds to the PORT environment variable for Railway deployment
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", 10000))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+    import sys
+    
+    # IMPORTANT: Default to 8080 to match Railway's expected port
+    port = int(os.getenv("PORT", "8080"))
+    
+    print(f"Starting server on port {port}", file=sys.stdout)
+    print(f"Environment PORT variable is set to: {os.getenv('PORT', 'not set')}", file=sys.stdout)
+    
+    try:
+        uvicorn.run("main:app", host="0.0.0.0", port=port, log_level="info")
+    except Exception as e:
+        print(f"Failed to start server: {str(e)}", file=sys.stderr)
+        # Don't raise, allow Railway to restart the container
+        sys.exit(1)
