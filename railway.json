@@ -10,7 +10,7 @@
     "healthcheckTimeout": 10,
     "restartPolicyType": "ON_FAILURE",
     "env": {
-      "PORT": "8000"
+      "PORT": "8080"
     }
   }
 } 
