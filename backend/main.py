@@ -70,57 +70,19 @@ async def create_default_admin():
     finally:
         db.close()
 
-# Enhance CORS configuration for all endpoints including auth and admin routes
+# Configure CORS - single implementation to avoid conflicts
+# Use a simple but comprehensive approach that works for all routes
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow all origins in dev/prod
     allow_credentials=True,
     allow_methods=["*"],  # Allow all methods including OPTIONS
-    allow_headers=["*"],  # Allow all headers
+    allow_headers=["*"],  # Allow all headers including Authorization
     expose_headers=["*"],
     max_age=86400,  # Cache preflight requests for 24 hours
 )
 
-# Global middleware to handle CORS for all endpoints including auth
-@app.middleware("http")
-async def cors_middleware(request: Request, call_next):
-    # Call the next middleware or endpoint
-    response = await call_next(request)
-    
-    # Add CORS headers to all responses
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    response.headers["Access-Control-Max-Age"] = "86400"
-    
-    # Special handling for preflight OPTIONS requests
-    if request.method == "OPTIONS":
-        # Return immediately for preflight
-        return JSONResponse(
-            content={"message": "CORS preflight handled successfully"},
-            status_code=200,
-            headers=response.headers,
-        )
-    
-    return response
-
-# Handle OPTIONS preflight for all paths explicitly
-@app.options("/{rest_of_path:path}")
-async def preflight_handler(request: Request, rest_of_path: str):
-    """
-    Handle CORS preflight requests for all paths including auth endpoints.
-    """
-    response = JSONResponse(
-        content={"message": "CORS preflight handled successfully"},
-    )
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "*"
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    response.headers["Access-Control-Max-Age"] = "86400"
-    return response
-
+# Simple CORS debug endpoint
 @app.get("/cors-debug")
 async def cors_debug():
     return {"cors_debug": True, "message": "CORS is working!"}
@@ -206,25 +168,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
 
 # Authentication endpoints
 @app.post("/token", response_model=schemas.Token)
-async def login_for_access_token(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """
     Authenticate a user and return an access token.
-    This endpoint is explicitly protected with CORS.
     """
-    # Special preflight handling for token endpoint
-    if request.method == "OPTIONS":
-        return JSONResponse(
-            status_code=200,
-            content={"detail": "OK"},
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "POST, OPTIONS",
-                "Access-Control-Allow-Headers": "*", 
-                "Access-Control-Allow-Credentials": "true",
-                "Access-Control-Max-Age": "86400",
-            }
-        )
-            
     # Check if it's an admin login
     admin = db.query(models.Admin).filter(models.Admin.username == form_data.username).first()
     if admin and verify_password(form_data.password, admin.hashed_password):
