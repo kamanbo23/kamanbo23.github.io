@@ -12,6 +12,9 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 import os
 import sys
+from fastapi.responses import JSONResponse
+from starlette.requests import Request
+from starlette.responses import Response
 
 # Only create tables automatically if specifically requested by environment variable
 # This prevents conflicts with railway_start.sh which also creates tables
@@ -67,68 +70,56 @@ async def create_default_admin():
     finally:
         db.close()
 
-# Get allowed origins from environment variable or use defaults
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "https://your-netlify-app.netlify.app,http://localhost:3000").split(",")
-
-# Simplified CORS configuration - simply allow everything in production
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
-
-class CORSDebugMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        if request.method == "OPTIONS":
-            # Handle OPTIONS requests directly
-            response = Response(
-                content="",
-                status_code=200,
-                headers={
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "*",
-                    "Access-Control-Allow-Headers": "*",
-                    "Access-Control-Allow-Credentials": "true",
-                    "Access-Control-Max-Age": "86400",
-                }
-            )
-            return response
-        else:
-            # Process other requests normally
-            response = await call_next(request)
-            # Add CORS headers to all responses
-            response.headers["Access-Control-Allow-Origin"] = "*"
-            response.headers["Access-Control-Allow-Methods"] = "*"
-            response.headers["Access-Control-Allow-Headers"] = "*"
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            return response
-
-# First, add our custom CORS middleware (this will run first)
-app.add_middleware(CORSDebugMiddleware)
-
-# Then add the standard FastAPI CORS middleware (as a backup)
+# Enhance CORS configuration for all endpoints including auth and admin routes
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
+    allow_origins=["*"],  # Allow all origins in dev/prod
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allow all methods including OPTIONS
+    allow_headers=["*"],  # Allow all headers
     expose_headers=["*"],
-    max_age=86400,
+    max_age=86400,  # Cache preflight requests for 24 hours
 )
 
-# Add a simple CORS debug endpoint
-@app.options("/cors-debug")
-async def cors_debug_options():
-    return JSONResponse(
+# Global middleware to handle CORS for all endpoints including auth
+@app.middleware("http")
+async def cors_middleware(request: Request, call_next):
+    # Call the next middleware or endpoint
+    response = await call_next(request)
+    
+    # Add CORS headers to all responses
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Max-Age"] = "86400"
+    
+    # Special handling for preflight OPTIONS requests
+    if request.method == "OPTIONS":
+        # Return immediately for preflight
+        return JSONResponse(
+            content={"message": "CORS preflight handled successfully"},
+            status_code=200,
+            headers=response.headers,
+        )
+    
+    return response
+
+# Handle OPTIONS preflight for all paths explicitly
+@app.options("/{rest_of_path:path}")
+async def preflight_handler(request: Request, rest_of_path: str):
+    """
+    Handle CORS preflight requests for all paths including auth endpoints.
+    """
+    response = JSONResponse(
         content={"message": "CORS preflight handled successfully"},
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "*",
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Allow-Credentials": "true",
-        }
     )
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Max-Age"] = "86400"
+    return response
 
 @app.get("/cors-debug")
 async def cors_debug():
@@ -215,7 +206,25 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
 
 # Authentication endpoints
 @app.post("/token", response_model=schemas.Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+async def login_for_access_token(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """
+    Authenticate a user and return an access token.
+    This endpoint is explicitly protected with CORS.
+    """
+    # Special preflight handling for token endpoint
+    if request.method == "OPTIONS":
+        return JSONResponse(
+            status_code=200,
+            content={"detail": "OK"},
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "*", 
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Max-Age": "86400",
+            }
+        )
+            
     # Check if it's an admin login
     admin = db.query(models.Admin).filter(models.Admin.username == form_data.username).first()
     if admin and verify_password(form_data.password, admin.hashed_password):
@@ -223,6 +232,10 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         access_token = create_access_token(
             data={"sub": admin.username, "user_type": "admin"}, expires_delta=access_token_expires
         )
+        
+        # Log successful admin login
+        print(f"Admin login successful: {admin.username}")
+        
         return {
             "access_token": access_token,
             "token_type": "bearer",
@@ -236,11 +249,17 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     ).first()
     
     if not user or not verify_password(form_data.password, user.hashed_password):
+        # Log failed login attempt
+        print(f"Failed login attempt for: {form_data.username}")
+        
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    # Log successful user login
+    print(f"User login successful: {user.username} (id: {user.id})")
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
@@ -257,6 +276,8 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 @app.post("/admin/create", response_model=schemas.Admin)
 def create_admin(admin: schemas.AdminCreate, db: Session = Depends(get_db)):
+    """Create a new admin user. This endpoint should only be accessible 
+    by existing admins but currently is unprotected."""
     db_admin = db.query(models.Admin).filter(models.Admin.username == admin.username).first()
     if db_admin:
         raise HTTPException(status_code=400, detail="Username already registered")

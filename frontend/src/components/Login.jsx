@@ -1,30 +1,74 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
-import { FiLock, FiUser, FiArrowRight, FiAlertCircle, FiMail } from 'react-icons/fi';
+import { FiLock, FiUser, FiArrowRight, FiAlertCircle, FiMail, FiWifi, FiWifiOff } from 'react-icons/fi';
 import './Login.css';
 
 const Login = () => {
     const [usernameOrEmail, setUsernameOrEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [networkStatus, setNetworkStatus] = useState(navigator.onLine);
     const { login, isLoading } = useAuth();
     const navigate = useNavigate();
+
+    // Monitor network status
+    useEffect(() => {
+        const handleOnline = () => setNetworkStatus(true);
+        const handleOffline = () => setNetworkStatus(false);
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
+        // Form validation
+        if (!usernameOrEmail.trim()) {
+            setError('Please enter your username or email');
+            return;
+        }
+
+        if (!password) {
+            setError('Please enter your password');
+            return;
+        }
+
+        // Check network status
+        if (!networkStatus) {
+            setError('You are offline. Please check your internet connection.');
+            return;
+        }
+
         try {
             const success = await login(usernameOrEmail, password);
             if (success) {
-                // Redirect based on user type
-                navigate('/');
+                // Add a small delay before navigation to show success state
+                setTimeout(() => {
+                    navigate('/');
+                }, 300);
             }
         } catch (err) {
-            setError('Invalid username/email or password. Please try again.');
             console.error('Login error:', err);
+            
+            // More specific error messages based on the error type
+            if (err.message === 'Invalid username or password') {
+                setError('Invalid username/email or password. Please try again.');
+            } else if (err.message.includes('Network error')) {
+                setError('Unable to connect to the server. Please check your internet connection.');
+            } else if (err.message.includes('Too many login attempts')) {
+                setError('Too many login attempts. Please try again later.');
+            } else {
+                setError(`Login failed: ${err.message || 'Unknown error'}`);
+            }
         }
     };
 
@@ -44,6 +88,15 @@ const Login = () => {
                 >
                     <h2>Welcome Back</h2>
                     <p>Sign in to access your account</p>
+                    
+                    {/* Network status indicator */}
+                    <div className={`network-status ${networkStatus ? 'online' : 'offline'}`}>
+                        {networkStatus ? (
+                            <><FiWifi /> <span>Online</span></>
+                        ) : (
+                            <><FiWifiOff /> <span>Offline</span></>
+                        )}
+                    </div>
                 </motion.div>
 
                 <form onSubmit={handleSubmit} className="login-form">
@@ -62,6 +115,7 @@ const Login = () => {
                                 onChange={(e) => setUsernameOrEmail(e.target.value)}
                                 required
                                 disabled={isLoading}
+                                className={error && error.includes('username') ? 'input-error' : ''}
                             />
                         </div>
                     </motion.div>
@@ -81,6 +135,7 @@ const Login = () => {
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                                 disabled={isLoading}
+                                className={error && error.includes('password') ? 'input-error' : ''}
                             />
                         </div>
                     </motion.div>
@@ -99,34 +154,29 @@ const Login = () => {
                     <motion.button 
                         type="submit"
                         className="login-button"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
+                        disabled={isLoading || !networkStatus}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.5 }}
-                        disabled={isLoading}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                     >
-                        {isLoading ? 'Logging in...' : 'Login'}
-                        <FiArrowRight className="button-icon" />
+                        {isLoading ? (
+                            <div className="spinner"></div>
+                        ) : (
+                            <>
+                                Sign In <FiArrowRight className="btn-icon" />
+                            </>
+                        )}
                     </motion.button>
 
                     <motion.div 
-                        className="form-footer"
+                        className="register-link"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.6 }}
                     >
-                        Don't have an account?{' '}
-                        <motion.a 
-                            href="/register"
-                            whileHover={{ scale: 1.05 }}
-                            onClick={(e) => {
-                                e.preventDefault();
-                                navigate('/register');
-                            }}
-                        >
-                            Sign Up
-                        </motion.a>
+                        <p>Don't have an account? <Link to="/register">Register</Link></p>
                     </motion.div>
                 </form>
             </div>
