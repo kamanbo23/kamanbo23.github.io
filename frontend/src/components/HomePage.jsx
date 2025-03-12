@@ -421,6 +421,35 @@ const HomePage = () => {
                     </Link>
                 </motion.div>
                 
+                {/* Site Status Message */}
+                <motion.div 
+                    className="site-status-message"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5, duration: 0.5 }}
+                >
+                    <svg className="status-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 16V12M12 8H12.01M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12Z" 
+                        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <div className="status-content">
+                        <p>We're actively adding more events and opportunities! If you encounter any issues, please try refreshing the page or contact <a href="mailto:lkamanboina@gmail.com">lkamanboina@gmail.com</a></p>
+                    </div>
+                </motion.div>
+                
+                {/* Enhanced Scroll Indicator - Moved higher up for better visibility */}
+                <motion.div 
+                    className="scroll-indicator-enhanced"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.7, duration: 0.5 }}
+                >
+                    <span>Scroll to explore more</span>
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 5L12 19M12 19L19 12M12 19L5 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                </motion.div>
+                
                 <motion.div 
                     className="hero-stats"
                     variants={itemVariants}
@@ -438,13 +467,6 @@ const HomePage = () => {
                         <span className="stat-label">Participating Institutions</span>
                     </div>
                 </motion.div>
-                
-                <div className="scroll-indicator">
-                    <span>Scroll to explore</span>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 5L12 19M12 19L19 12M12 19L5 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                </div>
             </motion.section>
             
             {/* Features section */}
