@@ -464,11 +464,80 @@ def create_event(
     db: Session = Depends(get_db),
     current_admin: models.Admin = Depends(get_current_admin)
 ):
-    db_event = models.TechEvent(**event.dict())
-    db.add(db_event)
-    db.commit()
-    db.refresh(db_event)
-    return db_event
+    try:
+        # Debug logging
+        print(f"Attempting to create event with data: {event}")
+
+        # Basic validation - very simple and lenient
+        # Only check if required fields exist but don't enforce strict validation
+        required_fields = {"title", "organization", "description", "venue", "registration_link", 
+                          "start_date", "end_date", "location", "type"}
+        missing_fields = [field for field in required_fields if not getattr(event, field, None)]
+        
+        if missing_fields:
+            return JSONResponse(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                content={"message": f"Missing required fields: {', '.join(missing_fields)}"}
+            )
+            
+        # Log the event creation attempt
+        print(f"Admin {current_admin.username} creating event: {event.title}")
+        print(f"Event type received: {event.type} (valid: {isinstance(event.type, schemas.EventType)})")
+        
+        # Create the event
+        event_dict = event.dict()
+        
+        # Print the complete dictionary for debugging
+        print(f"Converted event dict: {event_dict}")
+        
+        # Handle null arrays with defaults
+        for field in ["tech_stack", "speakers", "tags"]:
+            if field not in event_dict or event_dict[field] is None:
+                event_dict[field] = []
+            # Also clean any empty strings from lists
+            elif isinstance(event_dict[field], list):
+                event_dict[field] = [item for item in event_dict[field] if item and str(item).strip()]
+        
+        # Set defaults for numeric fields
+        for field in ["likes", "attendees"]:
+            if field not in event_dict or event_dict[field] is None:
+                event_dict[field] = 0
+        
+        # Create and save the event with proper error handling
+        try:
+            db_event = models.TechEvent(**event_dict)
+            db.add(db_event)
+            db.commit()
+            db.refresh(db_event)
+            
+            # Log successful creation
+            print(f"Event created successfully: {db_event.id} - {db_event.title}")
+            
+            return db_event
+        except Exception as db_error:
+            db.rollback()
+            print(f"Database error creating event: {str(db_error)}", file=sys.stderr)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={"message": f"Database error: {str(db_error)}"}
+            )
+    except ValidationError as ve:
+        # Handle Pydantic validation errors
+        print(f"Validation error: {str(ve)}", file=sys.stderr)
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={"message": f"Validation error: {str(ve)}"}
+        )
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        # Log unexpected errors
+        print(f"Error creating event: {str(e)}", file=sys.stderr)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"message": f"An unexpected error occurred: {str(e)}"}
+        )
 
 @app.get("/events/search/")
 def search_events(
