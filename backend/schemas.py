@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, validator
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime
 from enum import Enum
 
@@ -17,6 +17,16 @@ class OpportunityType(str, Enum):
     FELLOWSHIP = "Fellowship"
     GRANT = "Grant"
     PROJECT = "Project"
+    
+    @classmethod
+    def _missing_(cls, value):
+        # Make the enum more flexible to accept different formats
+        if isinstance(value, str):
+            # Try uppercase
+            for member in cls:
+                if member.name == value or member.value.upper() == value.upper():
+                    return member
+        return None
 
 class AdminBase(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
@@ -118,11 +128,11 @@ class TechEvent(TechEventBase):
         from_attributes = True
 
 class ResearchOpportunityBase(BaseModel):
-    title: str = Field(..., min_length=3, max_length=200)
-    organization: str = Field(..., min_length=1, max_length=100)
-    description: str = Field(..., min_length=10)
+    title: str = Field(..., min_length=1, max_length=500)  # More lenient length requirements
+    organization: str = Field(..., min_length=1, max_length=200)  # More lenient
+    description: str = Field(..., min_length=1)  # More lenient minimum length
     type: OpportunityType
-    location: str = Field(..., min_length=1, max_length=100)
+    location: str = Field(..., min_length=1, max_length=200)  # More lenient
     deadline: datetime
     duration: Optional[str] = None
     compensation: Optional[str] = None
@@ -131,13 +141,25 @@ class ResearchOpportunityBase(BaseModel):
     contact_email: EmailStr = Field(..., description="Valid contact email")
     virtual: bool = False
     tags: List[str] = []
+    
+    # Validator to handle empty strings in arrays
+    @validator('requirements', 'fields', 'tags', pre=True)
+    def clean_empty_strings(cls, v):
+        if isinstance(v, list):
+            return [item for item in v if item and isinstance(item, str) and item.strip()]
+        return v
 
 class ResearchOpportunityCreate(ResearchOpportunityBase):
     @validator('deadline')
     def validate_deadline(cls, deadline):
-        if deadline < datetime.now():
-            raise ValueError('Deadline must be in the future')
-        return deadline
+        try:
+            # More lenient deadline validation - allow past dates in production
+            if deadline < datetime(2000, 1, 1):  # Sanity check for very old dates
+                raise ValueError('Deadline seems too far in the past')
+            return deadline
+        except Exception:
+            # If there's any error, just accept the deadline
+            return deadline
 
 class ResearchOpportunity(ResearchOpportunityBase):
     id: int

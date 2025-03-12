@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, Query, status, Form
+from fastapi import FastAPI, Depends, HTTPException, Query, status, Form, UploadFile, File, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional, Union
 from datetime import datetime, timedelta
@@ -15,6 +15,7 @@ import sys
 from fastapi.responses import JSONResponse
 from starlette.requests import Request
 from starlette.responses import Response
+from pydantic import ValidationError
 
 # Only create tables automatically if specifically requested by environment variable
 # This prevents conflicts with railway_start.sh which also creates tables
@@ -632,54 +633,68 @@ def create_opportunity(
     current_admin: models.Admin = Depends(get_current_admin)
 ):
     try:
-        # Validate opportunity data
-        if not opportunity.title:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
-                                detail={"message": "Title is required", "field": "title"})
+        # Debug logging
+        print(f"Attempting to create opportunity with data: {opportunity}")
+
+        # Basic validation - very simple and lenient
+        # Only check if required fields exist but don't enforce strict validation
+        required_fields = {"title", "organization", "description", "type", "location", "deadline", "contact_email"}
+        missing_fields = [field for field in required_fields if not getattr(opportunity, field, None)]
         
-        if not opportunity.description:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
-                                detail={"message": "Description is required", "field": "description"})
-        
-        if not opportunity.organization:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
-                                detail={"message": "Organization is required", "field": "organization"})
-        
-        if not opportunity.type:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
-                                detail={"message": "Type is required", "field": "type"})
+        if missing_fields:
+            return JSONResponse(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                content={"message": f"Missing required fields: {', '.join(missing_fields)}"}
+            )
             
-        # Add additional field validations as needed
-        
         # Log the opportunity creation attempt
         print(f"Admin {current_admin.username} creating opportunity: {opportunity.title}")
+        print(f"Opportunity type received: {opportunity.type} (valid: {isinstance(opportunity.type, schemas.OpportunityType)})")
         
         # Create the opportunity
         opportunity_dict = opportunity.dict()
         
-        # Ensure all required fields have proper default values if not provided
-        if "fields" not in opportunity_dict or opportunity_dict["fields"] is None:
-            opportunity_dict["fields"] = []
-            
-        if "tags" not in opportunity_dict or opportunity_dict["tags"] is None:
-            opportunity_dict["tags"] = []
-            
-        if "likes" not in opportunity_dict or opportunity_dict["likes"] is None:
-            opportunity_dict["likes"] = 0
-            
-        if "applications" not in opportunity_dict or opportunity_dict["applications"] is None:
-            opportunity_dict["applications"] = 0
+        # Print the complete dictionary for debugging
+        print(f"Converted opportunity dict: {opportunity_dict}")
         
-        # Create and save the opportunity
-        db_opportunity = models.ResearchOpportunity(**opportunity_dict)
-        db.add(db_opportunity)
-        db.commit()
-        db.refresh(db_opportunity)
+        # Handle null arrays with defaults
+        for field in ["fields", "tags", "requirements"]:
+            if field not in opportunity_dict or opportunity_dict[field] is None:
+                opportunity_dict[field] = []
+            # Also clean any empty strings from lists
+            elif isinstance(opportunity_dict[field], list):
+                opportunity_dict[field] = [item for item in opportunity_dict[field] if item and str(item).strip()]
         
-        # Log successful creation
-        print(f"Opportunity created successfully: {db_opportunity.id} - {db_opportunity.title}")
+        # Set defaults for numeric fields
+        for field in ["likes", "applications"]:
+            if field not in opportunity_dict or opportunity_dict[field] is None:
+                opportunity_dict[field] = 0
         
-        return db_opportunity
+        # Create and save the opportunity with proper error handling
+        try:
+            db_opportunity = models.ResearchOpportunity(**opportunity_dict)
+            db.add(db_opportunity)
+            db.commit()
+            db.refresh(db_opportunity)
+            
+            # Log successful creation
+            print(f"Opportunity created successfully: {db_opportunity.id} - {db_opportunity.title}")
+            
+            return db_opportunity
+        except Exception as db_error:
+            db.rollback()
+            print(f"Database error creating opportunity: {str(db_error)}", file=sys.stderr)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={"message": f"Database error: {str(db_error)}"}
+            )
+    except ValidationError as ve:
+        # Handle Pydantic validation errors
+        print(f"Validation error: {str(ve)}", file=sys.stderr)
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={"message": f"Validation error: {str(ve)}"}
+        )
     except HTTPException:
         # Re-raise HTTP exceptions
         raise
@@ -688,7 +703,7 @@ def create_opportunity(
         print(f"Error creating opportunity: {str(e)}", file=sys.stderr)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"message": "An unexpected error occurred while creating the opportunity"}
+            detail={"message": f"An unexpected error occurred: {str(e)}"}
         )
 
 @app.get("/opportunities/search/")
