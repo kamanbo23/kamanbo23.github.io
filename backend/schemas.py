@@ -159,7 +159,8 @@ class ResearchOpportunityBase(BaseModel):
     compensation: Optional[str] = None
     requirements: List[str] = []
     fields: List[str] = []  # e.g., ["Machine Learning", "Computer Vision"]
-    contact_email: EmailStr = Field(..., description="Valid contact email")
+    contact_email: Optional[EmailStr] = None  # Made optional
+    website: Optional[str] = Field(None, description="Website for applications or more information")  # Added website field
     virtual: bool = False
     tags: List[str] = []
     

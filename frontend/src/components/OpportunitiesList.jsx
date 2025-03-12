@@ -261,7 +261,13 @@ const OpportunitiesList = () => {
 
                             <div className="contact">
                                 <FiMail className="icon" />
-                                {opportunity.contact_email}
+                                {opportunity.website ? (
+                                    <a href={opportunity.website} target="_blank" rel="noopener noreferrer">
+                                        {opportunity.website}
+                                    </a>
+                                ) : (
+                                    opportunity.contact_email || 'No contact information provided'
+                                )}
                             </div>
 
                             <div className="card-footer">
@@ -275,7 +281,15 @@ const OpportunitiesList = () => {
 
                                 <button
                                     className="apply-button"
-                                    onClick={() => handleApply(opportunity.id)}
+                                    onClick={() => {
+                                        handleApply(opportunity.id);
+                                        // Open website in new tab instead of email
+                                        if (opportunity.website) {
+                                            window.open(opportunity.website, '_blank');
+                                        } else if (opportunity.contact_email) {
+                                            window.open(`mailto:${opportunity.contact_email}?subject=Application for ${opportunity.title}`, '_blank');
+                                        }
+                                    }}
                                 >
                                     Apply Now
                                 </button>

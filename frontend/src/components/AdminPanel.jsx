@@ -61,13 +61,14 @@ const AdminPanel = () => {
                 title: '',
                 organization: '',
                 description: '',
-                type: 'RESEARCH',
+                type: 'Research',
                 location: '',
                 deadline: new Date().toISOString().split('T')[0],
                 duration: '',
                 compensation: '',
                 requirements: [],
                 fields: [],
+                website: '',
                 contact_email: '',
                 virtual: false,
                 tags: []
@@ -451,14 +452,25 @@ const AdminPanel = () => {
                                         </div>
                                         
                                         <div className="form-group">
-                                            <label htmlFor="contact_email">Contact Email</label>
+                                            <label htmlFor="contact_email">Contact Email (Optional)</label>
                                             <input
                                                 type="email"
                                                 id="contact_email"
                                                 name="contact_email"
                                                 value={formData.contact_email || ''}
                                                 onChange={handleChange}
-                                                required
+                                            />
+                                        </div>
+                                        
+                                        <div className="form-group">
+                                            <label htmlFor="website">Application Website</label>
+                                            <input
+                                                type="url"
+                                                id="website"
+                                                name="website"
+                                                value={formData.website || ''}
+                                                onChange={handleChange}
+                                                placeholder="https://example.com/apply"
                                             />
                                         </div>
                                     </>
