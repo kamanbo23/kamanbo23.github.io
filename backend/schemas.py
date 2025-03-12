@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, validator
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
@@ -19,10 +19,10 @@ class OpportunityType(str, Enum):
     PROJECT = "Project"
 
 class AdminBase(BaseModel):
-    username: str
+    username: str = Field(..., min_length=3, max_length=50)
 
 class AdminCreate(AdminBase):
-    password: str
+    password: str = Field(..., min_length=8)
 
 class Admin(AdminBase):
     id: int
@@ -32,17 +32,23 @@ class Admin(AdminBase):
         orm_mode = True
 
 class UserBase(BaseModel):
-    email: str
-    username: str
+    email: EmailStr = Field(..., description="Valid email address")
+    username: str = Field(..., min_length=3, max_length=50, description="Username between 3-50 characters")
 
 class UserCreate(UserBase):
-    password: str
-    full_name: str
+    password: str = Field(..., min_length=8, description="Password must be at least 8 characters")
+    full_name: str = Field(..., min_length=2, max_length=100, description="Full name between 2-100 characters")
+    
+    @validator('username')
+    def validate_username(cls, v):
+        if not v.isalnum():
+            raise ValueError('Username must be alphanumeric')
+        return v
 
 class UserUpdate(BaseModel):
-    email: Optional[str] = None
-    full_name: Optional[str] = None
-    bio: Optional[str] = None
+    email: Optional[EmailStr] = None
+    full_name: Optional[str] = Field(None, min_length=2, max_length=100)
+    bio: Optional[str] = Field(None, max_length=1000)
     interests: Optional[List[str]] = None
     profile_image: Optional[str] = None
 
@@ -61,8 +67,8 @@ class User(UserBase):
         orm_mode = True
 
 class UserLogin(BaseModel):
-    username_or_email: str
-    password: str
+    username_or_email: str = Field(..., min_length=3)
+    password: str = Field(..., min_length=1)
 
 class Token(BaseModel):
     access_token: str
@@ -77,20 +83,26 @@ class TokenData(BaseModel):
     user_type: Optional[str] = None
 
 class TechEventBase(BaseModel):
-    title: str
-    organization: str
-    description: str
-    venue: str
+    title: str = Field(..., min_length=3, max_length=200)
+    organization: str = Field(..., min_length=1, max_length=100) 
+    description: str = Field(..., min_length=10)
+    venue: str = Field(..., min_length=3, max_length=200)
     registration_link: str
     start_date: datetime
     end_date: datetime
-    location: str
+    location: str = Field(..., min_length=1, max_length=100)
     type: EventType
     price: Optional[str] = None
     tech_stack: List[str] = []  # e.g., ["Python", "React", "AWS"]
     speakers: List[str] = []
     virtual: bool = False
     tags: List[str] = []
+    
+    @validator('end_date')
+    def validate_end_date(cls, end_date, values):
+        if 'start_date' in values and end_date < values['start_date']:
+            raise ValueError('End date must be after start date')
+        return end_date
 
 class TechEventCreate(TechEventBase):
     pass
@@ -106,22 +118,26 @@ class TechEvent(TechEventBase):
         from_attributes = True
 
 class ResearchOpportunityBase(BaseModel):
-    title: str
-    organization: str
-    description: str
+    title: str = Field(..., min_length=3, max_length=200)
+    organization: str = Field(..., min_length=1, max_length=100)
+    description: str = Field(..., min_length=10)
     type: OpportunityType
-    location: str
+    location: str = Field(..., min_length=1, max_length=100)
     deadline: datetime
     duration: Optional[str] = None
     compensation: Optional[str] = None
     requirements: List[str] = []
     fields: List[str] = []  # e.g., ["Machine Learning", "Computer Vision"]
-    contact_email: str
+    contact_email: EmailStr = Field(..., description="Valid contact email")
     virtual: bool = False
     tags: List[str] = []
 
 class ResearchOpportunityCreate(ResearchOpportunityBase):
-    pass
+    @validator('deadline')
+    def validate_deadline(cls, deadline):
+        if deadline < datetime.now():
+            raise ValueError('Deadline must be in the future')
+        return deadline
 
 class ResearchOpportunity(ResearchOpportunityBase):
     id: int

@@ -127,16 +127,20 @@ async def get_current_admin(token: str = Depends(oauth2_scheme), db: Session = D
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
+        print(f"Validating admin token: {token[:10]}...")  # Log truncated token for debugging
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         user_type: str = payload.get("user_type", "user")
         if username is None or user_type != "admin":
+            print(f"Admin validation failed: wrong user type: {user_type}")
             raise credentials_exception
         token_data = schemas.TokenData(username=username, user_type=user_type)
-    except JWTError:
+    except JWTError as e:
+        print(f"JWT validation error: {str(e)}")
         raise credentials_exception
     admin = db.query(models.Admin).filter(models.Admin.username == token_data.username).first()
     if admin is None:
+        print(f"Admin not found: {token_data.username}")
         raise credentials_exception
     return admin
 
@@ -147,23 +151,38 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
+        print(f"Validating user token: {token[:10]}...")  # Log truncated token for debugging
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         user_id: int = payload.get("user_id")
         user_type: str = payload.get("user_type", "user")
+        
+        print(f"Token payload: username={username}, user_id={user_id}, user_type={user_type}")
+        
         if username is None:
+            print("Username missing from token")
             raise credentials_exception
         token_data = schemas.TokenData(username=username, user_id=user_id, user_type=user_type)
-    except JWTError:
+    except JWTError as e:
+        print(f"JWT validation error: {str(e)}")
         raise credentials_exception
         
     if token_data.user_type == "admin":
         user = db.query(models.Admin).filter(models.Admin.username == token_data.username).first()
+        if user is None:
+            print(f"Admin not found: {token_data.username}")
     else:
+        if token_data.user_id is None:
+            print("User ID missing from token")
+            raise credentials_exception
         user = db.query(models.User).filter(models.User.id == token_data.user_id).first()
+        if user is None:
+            print(f"User not found with ID: {token_data.user_id}")
         
     if user is None:
         raise credentials_exception
+    
+    print(f"Authentication successful for {token_data.username}")
     return user
 
 # Authentication endpoints
@@ -172,10 +191,13 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     """
     Authenticate a user and return an access token.
     """
+    print(f"Login attempt for: {form_data.username}")
+    
     # Check if it's an admin login
     admin = db.query(models.Admin).filter(models.Admin.username == form_data.username).first()
     if admin and verify_password(form_data.password, admin.hashed_password):
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        # Extend token expiration for admins
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES * 2)  # Double expiration for admins
         access_token = create_access_token(
             data={"sub": admin.username, "user_type": "admin"}, expires_delta=access_token_expires
         )
@@ -195,10 +217,16 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         (models.User.username == form_data.username) | (models.User.email == form_data.username)
     ).first()
     
-    if not user or not verify_password(form_data.password, user.hashed_password):
-        # Log failed login attempt
-        print(f"Failed login attempt for: {form_data.username}")
-        
+    if not user:
+        print(f"Login failed: User not found: {form_data.username}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    if not verify_password(form_data.password, user.hashed_password):
+        print(f"Login failed: Incorrect password for user: {form_data.username}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -238,30 +266,62 @@ def create_admin(admin: schemas.AdminCreate, db: Session = Depends(get_db)):
     return db_admin
 
 # User registration and profile management
-@app.post("/users/", response_model=schemas.User)
+@app.post("/users/", response_model=schemas.User, status_code=status.HTTP_201_CREATED)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    # Check if email already exists
-    db_user_email = db.query(models.User).filter(models.User.email == user.email).first()
-    if db_user_email:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Check if username already exists
-    db_user_username = db.query(models.User).filter(models.User.username == user.username).first()
-    if db_user_username:
-        raise HTTPException(status_code=400, detail="Username already taken")
-    
-    hashed_password = get_password_hash(user.password)
-    db_user = models.User(
-        email=user.email,
-        username=user.username,
-        hashed_password=hashed_password,
-        full_name=user.full_name
-    )
-    
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+    try:
+        # Input validation
+        if not user.email or not user.username or not user.password or not user.full_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail={"message": "Missing required fields", "fields": ["email", "username", "password", "full_name"]}
+            )
+        
+        # Check if email already exists
+        db_user_email = db.query(models.User).filter(models.User.email == user.email).first()
+        if db_user_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail={"message": "Email already registered", "field": "email"}
+            )
+        
+        # Check if username already exists
+        db_user_username = db.query(models.User).filter(models.User.username == user.username).first()
+        if db_user_username:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail={"message": "Username already taken", "field": "username"}
+            )
+        
+        # Create the user
+        hashed_password = get_password_hash(user.password)
+        db_user = models.User(
+            email=user.email,
+            username=user.username,
+            hashed_password=hashed_password,
+            full_name=user.full_name
+        )
+        
+        # Log registration attempt
+        print(f"Registering new user: {user.username} ({user.email})")
+        
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        
+        # Log successful registration
+        print(f"User registered successfully: {user.username} (ID: {db_user.id})")
+        
+        return db_user
+    except HTTPException:
+        # Re-raise HTTP exceptions to preserve status code and detail
+        raise
+    except Exception as e:
+        # Log unexpected errors
+        print(f"Unexpected error during user registration: {str(e)}", file=sys.stderr)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"message": "An unexpected error occurred during registration"}
+        )
 
 @app.get("/users/me", response_model=schemas.User)
 def read_users_me(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -571,11 +631,65 @@ def create_opportunity(
     db: Session = Depends(get_db),
     current_admin: models.Admin = Depends(get_current_admin)
 ):
-    db_opportunity = models.ResearchOpportunity(**opportunity.dict())
-    db.add(db_opportunity)
-    db.commit()
-    db.refresh(db_opportunity)
-    return db_opportunity
+    try:
+        # Validate opportunity data
+        if not opportunity.title:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
+                                detail={"message": "Title is required", "field": "title"})
+        
+        if not opportunity.description:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
+                                detail={"message": "Description is required", "field": "description"})
+        
+        if not opportunity.organization:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
+                                detail={"message": "Organization is required", "field": "organization"})
+        
+        if not opportunity.type:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
+                                detail={"message": "Type is required", "field": "type"})
+            
+        # Add additional field validations as needed
+        
+        # Log the opportunity creation attempt
+        print(f"Admin {current_admin.username} creating opportunity: {opportunity.title}")
+        
+        # Create the opportunity
+        opportunity_dict = opportunity.dict()
+        
+        # Ensure all required fields have proper default values if not provided
+        if "fields" not in opportunity_dict or opportunity_dict["fields"] is None:
+            opportunity_dict["fields"] = []
+            
+        if "tags" not in opportunity_dict or opportunity_dict["tags"] is None:
+            opportunity_dict["tags"] = []
+            
+        if "likes" not in opportunity_dict or opportunity_dict["likes"] is None:
+            opportunity_dict["likes"] = 0
+            
+        if "applications" not in opportunity_dict or opportunity_dict["applications"] is None:
+            opportunity_dict["applications"] = 0
+        
+        # Create and save the opportunity
+        db_opportunity = models.ResearchOpportunity(**opportunity_dict)
+        db.add(db_opportunity)
+        db.commit()
+        db.refresh(db_opportunity)
+        
+        # Log successful creation
+        print(f"Opportunity created successfully: {db_opportunity.id} - {db_opportunity.title}")
+        
+        return db_opportunity
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        # Log unexpected errors
+        print(f"Error creating opportunity: {str(e)}", file=sys.stderr)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"message": "An unexpected error occurred while creating the opportunity"}
+        )
 
 @app.get("/opportunities/search/")
 def search_opportunities(
