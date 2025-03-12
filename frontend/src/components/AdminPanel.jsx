@@ -146,22 +146,37 @@ const AdminPanel = () => {
             const isNew = !currentItem;
             let response;
             
+            console.log(`Submitting ${isNew ? 'new' : 'existing'} ${activeTab} form:`, formData);
+            
+            // Make a copy of the form data for validation
+            const validatedData = { ...formData };
+            
             if (activeTab === 'opportunities') {
                 if (isNew) {
-                    response = await opportunityService.createOpportunity(formData);
+                    response = await opportunityService.createOpportunity(validatedData);
                 } else {
-                    response = await opportunityService.updateOpportunity(currentItem.id, formData);
+                    response = await opportunityService.updateOpportunity(currentItem.id, validatedData);
                 }
-            } else {
+            } else if (activeTab === 'events') {
+                // Ensure event dates are valid
+                if (validatedData.start_date && validatedData.end_date) {
+                    const startDate = new Date(validatedData.start_date);
+                    const endDate = new Date(validatedData.end_date);
+                    
+                    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                        throw new Error('Invalid date format. Please use YYYY-MM-DD format.');
+                    }
+                }
+                
                 if (isNew) {
-                    response = await eventService.createEvent(formData);
+                    response = await eventService.createEvent(validatedData);
                 } else {
-                    response = await eventService.updateEvent(currentItem.id, formData);
+                    response = await eventService.updateEvent(currentItem.id, validatedData);
                 }
             }
             
             setMessage({
-                text: `Item successfully ${isNew ? 'created' : 'updated'}.`,
+                text: `${activeTab === 'opportunities' ? 'Opportunity' : 'Event'} successfully ${isNew ? 'created' : 'updated'}.`,
                 type: 'success'
             });
             
@@ -169,8 +184,23 @@ const AdminPanel = () => {
             fetchData();
         } catch (error) {
             console.error('Error submitting form:', error);
+            let errorMessage = 'Failed to save changes. Please try again.';
+            
+            // Extract detailed error message if available
+            if (error.response && error.response.data) {
+                if (error.response.data.detail) {
+                    errorMessage = typeof error.response.data.detail === 'string'
+                        ? error.response.data.detail
+                        : JSON.stringify(error.response.data.detail);
+                } else if (error.response.data.message) {
+                    errorMessage = error.response.data.message;
+                }
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
             setMessage({
-                text: 'Failed to save changes. Please try again.',
+                text: errorMessage,
                 type: 'error'
             });
         } finally {

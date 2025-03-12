@@ -173,11 +173,63 @@ export const eventService = {
   },
   
   createEvent: async (eventData) => {
-    return api.post('/events/', eventData);
+    try {
+      console.log('Creating event with data:', JSON.stringify(eventData));
+      // Make sure date formats are correct for API
+      const formattedData = { ...eventData };
+      
+      // Ensure start_date and end_date are properly formatted
+      if (formattedData.start_date && !formattedData.start_date.includes('T')) {
+        formattedData.start_date = `${formattedData.start_date}T00:00:00Z`;
+      }
+      
+      if (formattedData.end_date && !formattedData.end_date.includes('T')) {
+        formattedData.end_date = `${formattedData.end_date}T00:00:00Z`;
+      }
+      
+      // Ensure type is properly formatted (backend expects Case Formatted values)
+      if (formattedData.type) {
+        console.log(`Event type before formatting: ${formattedData.type}`);
+        // The backend now handles different formats via the _missing_ method in EventType enum
+      }
+      
+      const response = await api.post('/events/', formattedData);
+      console.log('Event created successfully:', response.data);
+      return response;
+    } catch (error) {
+      console.error('Error creating event:', error.response?.data || error.message);
+      throw error;
+    }
   },
   
   updateEvent: async (eventId, eventData) => {
-    return api.put(`/events/${eventId}`, eventData);
+    try {
+      console.log(`Updating event ${eventId} with data:`, JSON.stringify(eventData));
+      // Make sure date formats are correct for API
+      const formattedData = { ...eventData };
+      
+      // Ensure start_date and end_date are properly formatted
+      if (formattedData.start_date && !formattedData.start_date.includes('T')) {
+        formattedData.start_date = `${formattedData.start_date}T00:00:00Z`;
+      }
+      
+      if (formattedData.end_date && !formattedData.end_date.includes('T')) {
+        formattedData.end_date = `${formattedData.end_date}T00:00:00Z`;
+      }
+      
+      // Ensure type is properly formatted
+      if (formattedData.type) {
+        console.log(`Event type before formatting: ${formattedData.type}`);
+        // The backend now handles different formats via the _missing_ method in EventType enum
+      }
+      
+      const response = await api.put(`/events/${eventId}`, formattedData);
+      console.log('Event updated successfully:', response.data);
+      return response;
+    } catch (error) {
+      console.error('Error updating event:', error.response?.data || error.message);
+      throw error;
+    }
   },
   
   deleteEvent: async (eventId) => {
