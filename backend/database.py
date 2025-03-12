@@ -3,7 +3,7 @@ import logging
 from typing import Generator
 from contextlib import contextmanager
 
-from sqlalchemy import create_engine, event, exc
+from sqlalchemy import create_engine, event, exc, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from dotenv import load_dotenv
@@ -89,10 +89,16 @@ try:
         )
         logger.info("Successfully configured PostgreSQL engine")
     
-    # Test the engine connection immediately
-    with engine.connect() as conn:
-        result = conn.execute("SELECT 1").scalar()
-        logger.info(f"Database connection test successful: {result}")
+    # Test the engine connection immediately - Make sure to use text() function
+    logger.info("Testing database connection...")
+    try:
+        with engine.connect() as conn:
+            # IMPORTANT: Use text() to create a proper SQL expression
+            query_result = conn.execute(text("SELECT 1")).scalar()
+            logger.info(f"Database connection test successful: {query_result}")
+    except Exception as e:
+        logger.error(f"Database connection test failed: {str(e)}")
+        raise
     
 except exc.SQLAlchemyError as e:
     logger.error(f"Database connection error: {str(e)}")
