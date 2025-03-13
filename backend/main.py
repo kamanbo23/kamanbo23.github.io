@@ -664,29 +664,23 @@ def register_for_event(event_id: int, db: Session = Depends(get_db)):
     return {"message": "Successfully registered for event", "attendees": event.attendees}
 
 @app.get("/opportunities/", response_model=List[schemas.ResearchOpportunity])
-def get_opportunities(
-    skip: int = 0,
-    limit: int = 20,
-    sort_by: str = "deadline",
-    sort_order: str = "asc",
-    db: Session = Depends(get_db)
-):
-    query = db.query(models.ResearchOpportunity)
-    
-    # Apply sorting
-    if sort_by == "deadline":
-        query = query.order_by(models.ResearchOpportunity.deadline.asc())
-    elif sort_by == "created_at":
-        query = query.order_by(models.ResearchOpportunity.created_at.desc())
-    elif sort_by == "likes":
-        query = query.order_by(models.ResearchOpportunity.likes.desc())
-    
-    if sort_order == "desc":
-        query = query.order_by(getattr(models.ResearchOpportunity, sort_by).desc())
-    else:
-        query = query.order_by(getattr(models.ResearchOpportunity, sort_by).asc())
-    
-    return query.offset(skip).limit(limit).all()
+def read_opportunities(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    try:
+        opportunities = db.query(models.ResearchOpportunity).order_by(
+            models.ResearchOpportunity.deadline.asc(),
+            models.ResearchOpportunity.deadline.asc()
+        ).offset(skip).limit(limit).all()
+        
+        # Ensure website field exists for all opportunities
+        for opp in opportunities:
+            if not hasattr(opp, 'website') or opp.website is None:
+                opp.website = ""
+                
+        return opportunities
+    except Exception as e:
+        print(f"Error fetching opportunities: {str(e)}")
+        # Return empty list as fallback if there's a database error
+        return []
 
 @app.get("/opportunities/{opportunity_id}", response_model=schemas.ResearchOpportunity)
 def get_opportunity(opportunity_id: int, db: Session = Depends(get_db)):

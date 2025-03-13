@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { FiCalendar, FiMapPin, FiDollarSign, FiBook, FiUsers, FiHeart, FiMail, FiGlobe } from 'react-icons/fi';
 import { opportunityService } from '../services/api';
 import './OpportunitiesList.css';
+import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 const OpportunitiesList = () => {
     const [opportunities, setOpportunities] = useState([]);
@@ -13,6 +15,7 @@ const OpportunitiesList = () => {
         fields: [],
         virtual: null
     });
+    const navigate = useNavigate();
 
     const opportunityTypes = [
         'Research',
@@ -63,6 +66,41 @@ const OpportunitiesList = () => {
             fetchOpportunities();
         } catch (error) {
             console.error('Error applying for opportunity:', error);
+        }
+    };
+
+    const handleApplyClick = (opportunity) => {
+        if (user) {
+            // Try to use website URL if available, otherwise fall back to email
+            if (opportunity.website && opportunity.website.trim() !== '') {
+                // Open website in new tab
+                window.open(opportunity.website, '_blank');
+            } else if (opportunity.contact_email) {
+                // Fall back to email if no website
+                window.location.href = `mailto:${opportunity.contact_email}`;
+            } else {
+                // Neither website nor email available
+                toast.info("No application link or contact email available for this opportunity");
+            }
+            
+            // Still record the application in the backend
+            opportunityService.applyForOpportunity(opportunity.id)
+                .then(() => {
+                    // Update local state to reflect the application
+                    setOpportunities(opportunities.map(o => 
+                        o.id === opportunity.id 
+                            ? { ...o, applications: o.applications + 1 } 
+                            : o
+                    ));
+                })
+                .catch(error => {
+                    console.error('Error applying for opportunity:', error);
+                    toast.error("Failed to record your application. Please try again.");
+                });
+        } else {
+            // Prompt login if user is not authenticated
+            toast.info("Please log in to apply for this opportunity");
+            navigate('/login', { state: { returnTo: '/opportunities' } });
         }
     };
 
@@ -281,16 +319,7 @@ const OpportunitiesList = () => {
 
                                 <button
                                     className="apply-button"
-                                    onClick={() => {
-                                        handleApply(opportunity.id);
-                                        // Only open website in new tab, not email
-                                        if (opportunity.website && opportunity.website.trim() !== '') {
-                                            window.open(opportunity.website, '_blank');
-                                        } else {
-                                            // Alert user if no website is available
-                                            alert("No application website available. Please contact the organization directly.");
-                                        }
-                                    }}
+                                    onClick={() => handleApplyClick(opportunity)}
                                 >
                                     Apply Now
                                 </button>
