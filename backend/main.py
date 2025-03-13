@@ -702,75 +702,56 @@ def create_opportunity(
     current_admin: models.Admin = Depends(get_current_admin)
 ):
     try:
-        # Debug logging
         print(f"Attempting to create opportunity with data: {opportunity}")
-
-        # Basic validation - check required fields with more detailed error messages
-        required_fields = {"title", "organization", "description", "type", "location", "deadline"}
-        missing_fields = [field for field in required_fields if not getattr(opportunity, field, None)]
-        
-        if missing_fields:
-            return JSONResponse(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                content={"detail": f"Missing required fields: {', '.join(missing_fields)}"}
-            )
-            
-        # Log the opportunity creation attempt
         print(f"Admin {current_admin.username} creating opportunity: {opportunity.title}")
         print(f"Opportunity type received: {opportunity.type} (valid: {isinstance(opportunity.type, schemas.OpportunityType)})")
         
-        # Create the opportunity
-        opportunity_dict = opportunity.dict()
+        # Create dictionary from Pydantic model
+        opportunity_data = opportunity.dict()
+        print(f"Converted opportunity dict: {opportunity_data}")
         
-        # Print the complete dictionary for debugging
-        print(f"Converted opportunity dict: {opportunity_dict}")
-        
-        # Handle null arrays with defaults and clean empty strings
-        for field in ["fields", "tags", "requirements"]:
-            if field not in opportunity_dict or opportunity_dict[field] is None:
-                opportunity_dict[field] = []
-            elif isinstance(opportunity_dict[field], list):
-                opportunity_dict[field] = [item for item in opportunity_dict[field] if item and str(item).strip()]
-        
-        # Set defaults for numeric fields
-        for field in ["likes", "applications"]:
-            if field not in opportunity_dict or opportunity_dict[field] is None:
-                opportunity_dict[field] = 0
-        
-        # Create and save the opportunity with proper error handling
-        try:
-            # Create directly like we do with events
-            db_opportunity = models.ResearchOpportunity(**opportunity_dict)
-            db.add(db_opportunity)
-            db.commit()
-            db.refresh(db_opportunity)
+        # Format arrays properly
+        for field in ["requirements", "fields", "tags"]:
+            if field not in opportunity_data or opportunity_data[field] is None:
+                opportunity_data[field] = []
             
-            # Log successful creation
-            print(f"Opportunity created successfully: {db_opportunity.id} - {db_opportunity.title}")
-            return db_opportunity
+        # Set default values for numeric fields
+        if "applications" not in opportunity_data or opportunity_data["applications"] is None:
+            opportunity_data["applications"] = 0
+        if "likes" not in opportunity_data or opportunity_data["likes"] is None:
+            opportunity_data["likes"] = 0
             
-        except Exception as db_error:
-            # Roll back the transaction on error
-            db.rollback()
-            print(f"Database error creating opportunity: {str(db_error)}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Database error: {str(db_error)}"
-            )
-            
-    except ValidationError as validation_error:
-        print(f"Validation error creating opportunity: {str(validation_error)}")
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(validation_error)
+        # Create new opportunity directly with necessary fields
+        db_opportunity = models.ResearchOpportunity(
+            title=opportunity_data["title"],
+            organization=opportunity_data["organization"],
+            description=opportunity_data["description"],
+            type=opportunity_data["type"].value if hasattr(opportunity_data["type"], "value") else opportunity_data["type"],
+            location=opportunity_data["location"],
+            deadline=opportunity_data["deadline"],
+            duration=opportunity_data.get("duration", ""),
+            compensation=opportunity_data.get("compensation", ""),
+            requirements=opportunity_data.get("requirements", []),
+            fields=opportunity_data.get("fields", []),
+            contact_email=opportunity_data.get("contact_email"),
+            website=opportunity_data.get("website"),
+            virtual=opportunity_data.get("virtual", False),
+            tags=opportunity_data.get("tags", []),
+            applications=opportunity_data.get("applications", 0),
+            likes=opportunity_data.get("likes", 0)
         )
         
+        db.add(db_opportunity)
+        db.commit()
+        db.refresh(db_opportunity)
+        return db_opportunity
+        
     except Exception as e:
-        # Handle unexpected errors
-        print(f"Unexpected error creating opportunity: {str(e)}")
+        db.rollback()
+        print(f"Error creating opportunity: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred: {str(e)}"
+            detail=f"Database error: {str(e)}"
         )
 
 @app.get("/opportunities/search/")
@@ -849,18 +830,49 @@ def update_opportunity(
     db: Session = Depends(get_db),
     current_admin: models.Admin = Depends(get_current_admin)
 ):
-    db_opportunity = db.query(models.ResearchOpportunity).filter(models.ResearchOpportunity.id == opportunity_id).first()
-    if not db_opportunity:
-        raise HTTPException(status_code=404, detail="Opportunity not found")
-    
-    # Update fields directly from the dict
-    opportunity_dict = opportunity.dict()
-    for key, value in opportunity_dict.items():
-        setattr(db_opportunity, key, value)
-    
-    db.commit()
-    db.refresh(db_opportunity)
-    return db_opportunity
+    try:
+        # Find the opportunity
+        db_opportunity = db.query(models.ResearchOpportunity).filter(models.ResearchOpportunity.id == opportunity_id).first()
+        if db_opportunity is None:
+            raise HTTPException(status_code=404, detail="Opportunity not found")
+        
+        # Get data from request
+        opportunity_data = opportunity.dict()
+        
+        # Format arrays properly
+        for field in ["requirements", "fields", "tags"]:
+            if field not in opportunity_data or opportunity_data[field] is None:
+                opportunity_data[field] = []
+        
+        # Update all fields individually to avoid issues with new columns
+        db_opportunity.title = opportunity_data["title"]
+        db_opportunity.organization = opportunity_data["organization"]
+        db_opportunity.description = opportunity_data["description"]
+        db_opportunity.type = opportunity_data["type"].value if hasattr(opportunity_data["type"], "value") else opportunity_data["type"]
+        db_opportunity.location = opportunity_data["location"]
+        db_opportunity.deadline = opportunity_data["deadline"]
+        db_opportunity.duration = opportunity_data.get("duration", "")
+        db_opportunity.compensation = opportunity_data.get("compensation", "")
+        db_opportunity.requirements = opportunity_data.get("requirements", [])
+        db_opportunity.fields = opportunity_data.get("fields", [])
+        db_opportunity.contact_email = opportunity_data.get("contact_email")
+        db_opportunity.website = opportunity_data.get("website")
+        db_opportunity.virtual = opportunity_data.get("virtual", False)
+        db_opportunity.tags = opportunity_data.get("tags", [])
+        
+        # Don't override applications and likes counts on update
+        
+        db.commit()
+        db.refresh(db_opportunity)
+        return db_opportunity
+        
+    except Exception as e:
+        db.rollback()
+        print(f"Error updating opportunity: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating opportunity: {str(e)}"
+        )
 
 @app.delete("/opportunities/{opportunity_id}")
 def delete_opportunity(

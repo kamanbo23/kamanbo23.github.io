@@ -4,6 +4,7 @@ import json
 from sqlalchemy.types import TypeDecorator
 from database import Base
 from schemas import EventType, OpportunityType
+import datetime
 
 # Custom type for storing lists as JSON in SQLite
 class JsonList(TypeDecorator):
@@ -71,21 +72,21 @@ class ResearchOpportunity(Base):
     __tablename__ = "research_opportunities"
 
     id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
     title = Column(String, index=True)
-    organization = Column(String, index=True)
-    description = Column(Text)
+    organization = Column(String)
+    description = Column(String)
     type = Column(String)
     location = Column(String)
     deadline = Column(DateTime)
-    duration = Column(String, nullable=True)
-    compensation = Column(String, nullable=True)
-    requirements = Column(JsonList, default=[])
-    fields = Column(JsonList, default=[])
+    duration = Column(String)
+    compensation = Column(String)
+    requirements = Column(JSON, default=list)
+    fields = Column(JSON, default=list)
     contact_email = Column(String, nullable=True)
     website = Column(String, nullable=True)
     virtual = Column(Boolean, default=False)
-    tags = Column(JsonList, default=[])
+    tags = Column(JSON, default=list)
     applications = Column(Integer, default=0)
     likes = Column(Integer, default=0)
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
