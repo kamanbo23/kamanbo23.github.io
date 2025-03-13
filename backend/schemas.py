@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr, Field, validator
 from typing import Optional, List, Any
 from datetime import datetime
 from enum import Enum
+import json
 
 class EventType(str, Enum):
     CONFERENCE = "Conference"
@@ -190,5 +191,15 @@ class ResearchOpportunity(ResearchOpportunityBase):
     applications: int = 0
     likes: int = 0
 
+    # Add validator to ensure arrays are properly parsed
+    @validator("requirements", "fields", "tags", pre=True)
+    def parse_json_arrays(cls, value):
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                return []
+        return value or []
+
     class Config:
-        from_attributes = True
+        from_attributes = True  # or orm_mode = True for Pydantic v1

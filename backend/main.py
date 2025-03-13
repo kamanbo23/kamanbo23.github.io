@@ -17,6 +17,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from pydantic import ValidationError, validator
 import direct_migration
+import json
 
 # Only create tables automatically if specifically requested by environment variable
 # This prevents conflicts with railway_start.sh which also creates tables
@@ -671,19 +672,19 @@ def read_opportunities(skip: int = 0, limit: int = 100, db: Session = Depends(ge
             models.ResearchOpportunity.deadline.asc()
         ).offset(skip).limit(limit).all()
         
-        # Process opportunities to ensure consistent format
+        # Process JSON arrays before returning
         for opportunity in opportunities:
             for field in ["requirements", "fields", "tags"]:
-                value = getattr(opportunity, field, None)
-                if isinstance(value, str):
-                    try:
-                        import json
-                        setattr(opportunity, field, json.loads(value))
-                    except:
+                if hasattr(opportunity, field):
+                    value = getattr(opportunity, field)
+                    if isinstance(value, str):
+                        try:
+                            setattr(opportunity, field, json.loads(value))
+                        except:
+                            setattr(opportunity, field, [])
+                    elif value is None:
                         setattr(opportunity, field, [])
-                elif value is None:
-                    setattr(opportunity, field, [])
-                    
+        
         return opportunities
     except Exception as e:
         print(f"Error fetching opportunities: {str(e)}")
@@ -706,47 +707,33 @@ def create_opportunity(
         print(f"Attempting to create opportunity with data: {opportunity}")
         print(f"Admin {current_admin.username} creating opportunity: {opportunity.title}")
         
-        # Clean and validate website URL if present
-        website = opportunity.website if hasattr(opportunity, 'website') else None
-        if website and isinstance(website, str):
-            # Remove any trailing semicolons or whitespace
-            website = website.rstrip(';').strip()
+        # Clean website URL - remove any trailing semicolons
+        if hasattr(opportunity, 'website') and opportunity.website:
+            opportunity.website = opportunity.website.rstrip(';').strip()
         
-        # Create dictionary from Pydantic model but with only fields that exist in the database model
-        opportunity_data = {
-            "title": opportunity.title,
-            "organization": opportunity.organization,
-            "description": opportunity.description,
-            "type": opportunity.type.value if hasattr(opportunity.type, "value") else opportunity.type,
-            "location": opportunity.location,
-            "deadline": opportunity.deadline,
-            "duration": opportunity.duration,
-            "compensation": opportunity.compensation,
-            "requirements": opportunity.requirements or [],
-            "fields": opportunity.fields or [],
-            "contact_email": opportunity.contact_email,
-            "virtual": opportunity.virtual,
-            "tags": opportunity.tags or [],
-            "applications": 0,
-            "likes": 0
-        }
+        # Create opportunity dict
+        opportunity_data = opportunity.dict()
         
-        # Only add website field if it's defined in our model
-        if hasattr(models.ResearchOpportunity, 'website'):
-            opportunity_data["website"] = website
-        
-        # Create DB model instance with validated data
+        # Create database model
         db_opportunity = models.ResearchOpportunity(**opportunity_data)
         
-        # Add, commit, and return
+        # Add, commit, refresh
         db.add(db_opportunity)
         db.commit()
         db.refresh(db_opportunity)
         
-        # If website field exists in schema but not in DB, add it to the returned object
-        if hasattr(schemas.ResearchOpportunity, 'website') and not hasattr(db_opportunity, 'website'):
-            setattr(db_opportunity, 'website', website)
-            
+        # Process JSON arrays before returning
+        for field in ["requirements", "fields", "tags"]:
+            if hasattr(db_opportunity, field):
+                value = getattr(db_opportunity, field)
+                if isinstance(value, str):
+                    try:
+                        setattr(db_opportunity, field, json.loads(value))
+                    except:
+                        setattr(db_opportunity, field, [])
+                elif value is None:
+                    setattr(db_opportunity, field, [])
+        
         return db_opportunity
         
     except Exception as e:
