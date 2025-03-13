@@ -307,15 +307,15 @@ const AdminPanel = () => {
                                             <select
                                                 id="type"
                                                 name="type"
-                                                value={formData.type || 'RESEARCH'}
+                                                value={formData.type || 'Research'}
                                                 onChange={handleChange}
                                                 required
                                             >
-                                                <option value="RESEARCH">Research</option>
-                                                <option value="INTERNSHIP">Internship</option>
-                                                <option value="FELLOWSHIP">Fellowship</option>
-                                                <option value="GRANT">Grant</option>
-                                                <option value="PROJECT">Project</option>
+                                                <option value="Research">Research</option>
+                                                <option value="Internship">Internship</option>
+                                                <option value="Fellowship">Fellowship</option>
+                                                <option value="Grant">Grant</option>
+                                                <option value="Project">Project</option>
                                             </select>
                                         </div>
                                         

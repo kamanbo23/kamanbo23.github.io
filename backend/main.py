@@ -705,15 +705,14 @@ def create_opportunity(
         # Debug logging
         print(f"Attempting to create opportunity with data: {opportunity}")
 
-        # Basic validation - very simple and lenient
-        # Only check if required fields exist but don't enforce strict validation
-        required_fields = {"title", "organization", "description", "type", "location", "deadline", "contact_email"}
+        # Basic validation - check required fields with more detailed error messages
+        required_fields = {"title", "organization", "description", "type", "location", "deadline"}
         missing_fields = [field for field in required_fields if not getattr(opportunity, field, None)]
         
         if missing_fields:
             return JSONResponse(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                content={"message": f"Missing required fields: {', '.join(missing_fields)}"}
+                content={"detail": f"Missing required fields: {', '.join(missing_fields)}"}
             )
             
         # Log the opportunity creation attempt
@@ -726,11 +725,10 @@ def create_opportunity(
         # Print the complete dictionary for debugging
         print(f"Converted opportunity dict: {opportunity_dict}")
         
-        # Handle null arrays with defaults
+        # Handle null arrays with defaults and clean empty strings
         for field in ["fields", "tags", "requirements"]:
             if field not in opportunity_dict or opportunity_dict[field] is None:
                 opportunity_dict[field] = []
-            # Also clean any empty strings from lists
             elif isinstance(opportunity_dict[field], list):
                 opportunity_dict[field] = [item for item in opportunity_dict[field] if item and str(item).strip()]
         
@@ -748,31 +746,30 @@ def create_opportunity(
             
             # Log successful creation
             print(f"Opportunity created successfully: {db_opportunity.id} - {db_opportunity.title}")
-            
             return db_opportunity
+            
         except Exception as db_error:
+            # Roll back the transaction on error
             db.rollback()
-            print(f"Database error creating opportunity: {str(db_error)}", file=sys.stderr)
+            print(f"Database error creating opportunity: {str(db_error)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={"message": f"Database error: {str(db_error)}"}
+                detail=f"Database error: {str(db_error)}"
             )
-    except ValidationError as ve:
-        # Handle Pydantic validation errors
-        print(f"Validation error: {str(ve)}", file=sys.stderr)
-        return JSONResponse(
+            
+    except ValidationError as validation_error:
+        print(f"Validation error creating opportunity: {str(validation_error)}")
+        raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={"message": f"Validation error: {str(ve)}"}
+            detail=str(validation_error)
         )
-    except HTTPException:
-        # Re-raise HTTP exceptions
-        raise
+        
     except Exception as e:
-        # Log unexpected errors
-        print(f"Error creating opportunity: {str(e)}", file=sys.stderr)
+        # Handle unexpected errors
+        print(f"Unexpected error creating opportunity: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"message": f"An unexpected error occurred: {str(e)}"}
+            detail=f"An unexpected error occurred: {str(e)}"
         )
 
 @app.get("/opportunities/search/")

@@ -240,27 +240,112 @@ export const eventService = {
 // Opportunities services
 export const opportunityService = {
   getOpportunities: async () => {
-    return api.get('/opportunities/');
+    try {
+      const response = await api.get('/opportunities/');
+      return response;
+    } catch (error) {
+      console.error('Error fetching opportunities:', error.response?.data || error.message);
+      throw error;
+    }
   },
   
   createOpportunity: async (opportunityData) => {
-    return api.post('/opportunities/', opportunityData);
+    try {
+      console.log('Creating opportunity with data:', JSON.stringify(opportunityData));
+      // Make sure date formats are correct for API
+      const formattedData = { ...opportunityData };
+      
+      // Ensure deadline is properly formatted
+      if (formattedData.deadline && !formattedData.deadline.includes('T')) {
+        formattedData.deadline = `${formattedData.deadline}T00:00:00Z`;
+      }
+      
+      // Ensure type is properly formatted (backend expects Case Formatted values)
+      if (formattedData.type) {
+        console.log(`Opportunity type before formatting: ${formattedData.type}`);
+        // The backend handles different formats via the _missing_ method in OpportunityType enum
+      }
+      
+      // Ensure arrays are properly initialized
+      ['requirements', 'fields', 'tags'].forEach(field => {
+        if (!formattedData[field]) {
+          formattedData[field] = [];
+        }
+      });
+      
+      const response = await api.post('/opportunities/', formattedData);
+      console.log('Opportunity created successfully:', response.data);
+      return response;
+    } catch (error) {
+      console.error('Error creating opportunity:', error.response?.data || error.message);
+      throw error;
+    }
   },
   
   updateOpportunity: async (opportunityId, opportunityData) => {
-    return api.put(`/opportunities/${opportunityId}`, opportunityData);
+    try {
+      console.log(`Updating opportunity ${opportunityId} with data:`, JSON.stringify(opportunityData));
+      // Make sure date formats are correct for API
+      const formattedData = { ...opportunityData };
+      
+      // Ensure deadline is properly formatted
+      if (formattedData.deadline && !formattedData.deadline.includes('T')) {
+        formattedData.deadline = `${formattedData.deadline}T00:00:00Z`;
+      }
+      
+      // Ensure type is properly formatted
+      if (formattedData.type) {
+        console.log(`Opportunity type before formatting: ${formattedData.type}`);
+        // The backend handles different formats via the _missing_ method in OpportunityType enum
+      }
+      
+      // Ensure arrays are properly initialized
+      ['requirements', 'fields', 'tags'].forEach(field => {
+        if (!formattedData[field]) {
+          formattedData[field] = [];
+        }
+      });
+      
+      const response = await api.put(`/opportunities/${opportunityId}`, formattedData);
+      console.log('Opportunity updated successfully:', response.data);
+      return response;
+    } catch (error) {
+      console.error('Error updating opportunity:', error.response?.data || error.message);
+      throw error;
+    }
   },
   
   deleteOpportunity: async (opportunityId) => {
-    return api.delete(`/opportunities/${opportunityId}`);
+    try {
+      const response = await api.delete(`/opportunities/${opportunityId}`);
+      console.log(`Opportunity ${opportunityId} deleted successfully`);
+      return response;
+    } catch (error) {
+      console.error(`Error deleting opportunity ${opportunityId}:`, error.response?.data || error.message);
+      throw error;
+    }
   },
   
   likeOpportunity: async (opportunityId) => {
-    return api.post(`/opportunities/${opportunityId}/like`);
+    try {
+      const response = await api.post(`/opportunities/${opportunityId}/like`);
+      console.log(`Opportunity ${opportunityId} liked successfully`);
+      return response;
+    } catch (error) {
+      console.error(`Error liking opportunity ${opportunityId}:`, error.response?.data || error.message);
+      throw error;
+    }
   },
   
   applyForOpportunity: async (opportunityId) => {
-    return api.post(`/opportunities/${opportunityId}/apply`);
+    try {
+      const response = await api.post(`/opportunities/${opportunityId}/apply`);
+      console.log(`Applied for opportunity ${opportunityId} successfully`);
+      return response;
+    } catch (error) {
+      console.error(`Error applying for opportunity ${opportunityId}:`, error.response?.data || error.message);
+      throw error;
+    }
   }
 };
 
