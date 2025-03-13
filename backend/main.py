@@ -15,7 +15,7 @@ import sys
 from fastapi.responses import JSONResponse
 from starlette.requests import Request
 from starlette.responses import Response
-from pydantic import ValidationError
+from pydantic import ValidationError, validator
 import direct_migration
 
 # Only create tables automatically if specifically requested by environment variable
@@ -668,19 +668,25 @@ def register_for_event(event_id: int, db: Session = Depends(get_db)):
 def read_opportunities(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     try:
         opportunities = db.query(models.ResearchOpportunity).order_by(
-            models.ResearchOpportunity.deadline.asc(),
             models.ResearchOpportunity.deadline.asc()
         ).offset(skip).limit(limit).all()
         
-        # Ensure website field exists for all opportunities
-        for opp in opportunities:
-            if not hasattr(opp, 'website') or opp.website is None:
-                opp.website = ""
-                
+        # Process opportunities to ensure consistent format
+        for opportunity in opportunities:
+            for field in ["requirements", "fields", "tags"]:
+                value = getattr(opportunity, field, None)
+                if isinstance(value, str):
+                    try:
+                        import json
+                        setattr(opportunity, field, json.loads(value))
+                    except:
+                        setattr(opportunity, field, [])
+                elif value is None:
+                    setattr(opportunity, field, [])
+                    
         return opportunities
     except Exception as e:
         print(f"Error fetching opportunities: {str(e)}")
-        # Return empty list as fallback if there's a database error
         return []
 
 @app.get("/opportunities/{opportunity_id}", response_model=schemas.ResearchOpportunity)
