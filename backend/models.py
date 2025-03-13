@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, func, ForeignKey
 from sqlalchemy.sql import func
 import json
-from sqlalchemy.types import TypeDecorator
+from sqlalchemy.types import TypeDecorator, JSON
 from database import Base
 from schemas import EventType, OpportunityType
 import datetime
