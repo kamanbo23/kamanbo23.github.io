@@ -255,11 +255,18 @@ export const opportunityService = {
         formattedData.deadline = `${formattedData.deadline}T00:00:00Z`;
       }
       
+      // Clean the website URL
+      if (formattedData.website) {
+        formattedData.website = formattedData.website.trim().replace(/;$/, '');
+      }
+      
       // Ensure array fields are arrays
       ['requirements', 'fields', 'tags'].forEach(field => {
         if (!formattedData[field] || !Array.isArray(formattedData[field])) {
           formattedData[field] = formattedData[field] ? 
-            formattedData[field].split(',').map(item => item.trim()) : 
+            (typeof formattedData[field] === 'string' ? 
+              formattedData[field].split(',').map(item => item.trim()) : 
+              [formattedData[field].toString()]) : 
             [];
         }
       });
@@ -285,11 +292,18 @@ export const opportunityService = {
         formattedData.deadline = `${formattedData.deadline}T00:00:00Z`;
       }
       
+      // Clean the website URL
+      if (formattedData.website) {
+        formattedData.website = formattedData.website.trim().replace(/;$/, '');
+      }
+      
       // Ensure array fields are arrays
       ['requirements', 'fields', 'tags'].forEach(field => {
         if (!formattedData[field] || !Array.isArray(formattedData[field])) {
           formattedData[field] = formattedData[field] ? 
-            formattedData[field].split(',').map(item => item.trim()) : 
+            (typeof formattedData[field] === 'string' ? 
+              formattedData[field].split(',').map(item => item.trim()) : 
+              [formattedData[field].toString()]) : 
             [];
         }
       });

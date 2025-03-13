@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 from starlette.requests import Request
 from starlette.responses import Response
 from pydantic import ValidationError
+import direct_migration
 
 # Only create tables automatically if specifically requested by environment variable
 # This prevents conflicts with railway_start.sh which also creates tables
@@ -698,46 +699,48 @@ def create_opportunity(
     try:
         print(f"Attempting to create opportunity with data: {opportunity}")
         print(f"Admin {current_admin.username} creating opportunity: {opportunity.title}")
-        print(f"Opportunity type received: {opportunity.type} (valid: {isinstance(opportunity.type, schemas.OpportunityType)})")
         
-        # Create dictionary from Pydantic model
-        opportunity_data = opportunity.dict()
-        print(f"Converted opportunity dict: {opportunity_data}")
+        # Clean and validate website URL if present
+        website = opportunity.website if hasattr(opportunity, 'website') else None
+        if website and isinstance(website, str):
+            # Remove any trailing semicolons or whitespace
+            website = website.rstrip(';').strip()
         
-        # Format arrays properly
-        for field in ["requirements", "fields", "tags"]:
-            if field not in opportunity_data or opportunity_data[field] is None:
-                opportunity_data[field] = []
-            
-        # Set default values for numeric fields
-        if "applications" not in opportunity_data or opportunity_data["applications"] is None:
-            opportunity_data["applications"] = 0
-        if "likes" not in opportunity_data or opportunity_data["likes"] is None:
-            opportunity_data["likes"] = 0
-            
-        # Create new opportunity directly with necessary fields
-        db_opportunity = models.ResearchOpportunity(
-            title=opportunity_data["title"],
-            organization=opportunity_data["organization"],
-            description=opportunity_data["description"],
-            type=opportunity_data["type"].value if hasattr(opportunity_data["type"], "value") else opportunity_data["type"],
-            location=opportunity_data["location"],
-            deadline=opportunity_data["deadline"],
-            duration=opportunity_data.get("duration", ""),
-            compensation=opportunity_data.get("compensation", ""),
-            requirements=opportunity_data.get("requirements", []),
-            fields=opportunity_data.get("fields", []),
-            contact_email=opportunity_data.get("contact_email"),
-            website=opportunity_data.get("website"),
-            virtual=opportunity_data.get("virtual", False),
-            tags=opportunity_data.get("tags", []),
-            applications=opportunity_data.get("applications", 0),
-            likes=opportunity_data.get("likes", 0)
-        )
+        # Create dictionary from Pydantic model but with only fields that exist in the database model
+        opportunity_data = {
+            "title": opportunity.title,
+            "organization": opportunity.organization,
+            "description": opportunity.description,
+            "type": opportunity.type.value if hasattr(opportunity.type, "value") else opportunity.type,
+            "location": opportunity.location,
+            "deadline": opportunity.deadline,
+            "duration": opportunity.duration,
+            "compensation": opportunity.compensation,
+            "requirements": opportunity.requirements or [],
+            "fields": opportunity.fields or [],
+            "contact_email": opportunity.contact_email,
+            "virtual": opportunity.virtual,
+            "tags": opportunity.tags or [],
+            "applications": 0,
+            "likes": 0
+        }
         
+        # Only add website field if it's defined in our model
+        if hasattr(models.ResearchOpportunity, 'website'):
+            opportunity_data["website"] = website
+        
+        # Create DB model instance with validated data
+        db_opportunity = models.ResearchOpportunity(**opportunity_data)
+        
+        # Add, commit, and return
         db.add(db_opportunity)
         db.commit()
         db.refresh(db_opportunity)
+        
+        # If website field exists in schema but not in DB, add it to the returned object
+        if hasattr(schemas.ResearchOpportunity, 'website') and not hasattr(db_opportunity, 'website'):
+            setattr(db_opportunity, 'website', website)
+            
         return db_opportunity
         
     except Exception as e:
@@ -745,7 +748,7 @@ def create_opportunity(
         print(f"Error creating opportunity: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {str(e)}"
+            detail=f"Error creating opportunity: {str(e)}"
         )
 
 @app.get("/opportunities/search/")
@@ -965,6 +968,13 @@ if __name__ == "__main__":
     print(f"Environment PORT variable is set to: {os.getenv('PORT', 'not set')}", file=sys.stdout)
     
     try:
+        # Run the direct migration on startup
+        try:
+            direct_migration.run_direct_migration()
+        except Exception as e:
+            print(f"Failed to run direct migration: {str(e)}")
+            # Continue execution even if migration fails
+        
         uvicorn.run("main:app", host="0.0.0.0", port=port, log_level="info")
     except Exception as e:
         print(f"Failed to start server: {str(e)}", file=sys.stderr)
