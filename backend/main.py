@@ -691,11 +691,24 @@ def read_opportunities(skip: int = 0, limit: int = 100, db: Session = Depends(ge
         return []
 
 @app.get("/opportunities/{opportunity_id}", response_model=schemas.ResearchOpportunity)
-def get_opportunity(opportunity_id: int, db: Session = Depends(get_db)):
-    opportunity = db.query(models.ResearchOpportunity).filter(models.ResearchOpportunity.id == opportunity_id).first()
-    if opportunity is None:
+def read_opportunity(opportunity_id: int, db: Session = Depends(get_db)):
+    db_opportunity = db.query(models.ResearchOpportunity).filter(models.ResearchOpportunity.id == opportunity_id).first()
+    if db_opportunity is None:
         raise HTTPException(status_code=404, detail="Opportunity not found")
-    return opportunity
+    
+    # Process JSON arrays before returning
+    for field in ["requirements", "fields", "tags"]:
+        if hasattr(db_opportunity, field):
+            value = getattr(db_opportunity, field)
+            if isinstance(value, str):
+                try:
+                    setattr(db_opportunity, field, json.loads(value))
+                except:
+                    setattr(db_opportunity, field, [])
+            elif value is None:
+                setattr(db_opportunity, field, [])
+    
+    return db_opportunity
 
 @app.post("/opportunities/", response_model=schemas.ResearchOpportunity)
 def create_opportunity(
@@ -826,36 +839,31 @@ def update_opportunity(
         if db_opportunity is None:
             raise HTTPException(status_code=404, detail="Opportunity not found")
         
-        # Get data from request
+        # Clean website URL
+        if hasattr(opportunity, 'website') and opportunity.website:
+            opportunity.website = opportunity.website.rstrip(';').strip()
+        
+        # Update fields
         opportunity_data = opportunity.dict()
-        
-        # Format arrays properly
-        for field in ["requirements", "fields", "tags"]:
-            if field not in opportunity_data or opportunity_data[field] is None:
-                opportunity_data[field] = []
-        
-        # Update all fields individually to avoid issues with new columns
-        db_opportunity.title = opportunity_data["title"]
-        db_opportunity.organization = opportunity_data["organization"]
-        db_opportunity.description = opportunity_data["description"]
-        db_opportunity.type = opportunity_data["type"].value if hasattr(opportunity_data["type"], "value") else opportunity_data["type"]
-        db_opportunity.location = opportunity_data["location"]
-        db_opportunity.deadline = opportunity_data["deadline"]
-        db_opportunity.duration = opportunity_data.get("duration", "")
-        db_opportunity.compensation = opportunity_data.get("compensation", "")
-        db_opportunity.requirements = opportunity_data.get("requirements", [])
-        db_opportunity.fields = opportunity_data.get("fields", [])
-        db_opportunity.contact_email = opportunity_data.get("contact_email")
-        db_opportunity.website = opportunity_data.get("website")
-        db_opportunity.virtual = opportunity_data.get("virtual", False)
-        db_opportunity.tags = opportunity_data.get("tags", [])
-        
-        # Don't override applications and likes counts on update
+        for key, value in opportunity_data.items():
+            setattr(db_opportunity, key, value)
         
         db.commit()
         db.refresh(db_opportunity)
-        return db_opportunity
         
+        # Process JSON arrays before returning
+        for field in ["requirements", "fields", "tags"]:
+            if hasattr(db_opportunity, field):
+                value = getattr(db_opportunity, field)
+                if isinstance(value, str):
+                    try:
+                        setattr(db_opportunity, field, json.loads(value))
+                    except:
+                        setattr(db_opportunity, field, [])
+                elif value is None:
+                    setattr(db_opportunity, field, [])
+        
+        return db_opportunity
     except Exception as e:
         db.rollback()
         print(f"Error updating opportunity: {str(e)}")
