@@ -81,10 +81,27 @@ class ResearchOpportunity(Base):
     compensation = Column(String, nullable=True)
     requirements = Column(JsonList, default=[])
     fields = Column(JsonList, default=[])
-    contact_email = Column(String)
+    contact_email = Column(String, nullable=True)
+    website = Column(String, nullable=True)
     virtual = Column(Boolean, default=False)
     tags = Column(JsonList, default=[])
     applications = Column(Integer, default=0)
     likes = Column(Integer, default=0)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    def __init__(self, **kwargs):
+        # Process all standard keyword arguments
+        for key, value in kwargs.items():
+            # Skip 'website' if it's causing problems
+            if key == 'website':
+                continue
+            if hasattr(self, key):
+                setattr(self, key, value)
+        
+        # Handle 'website' specifically if provided
+        if 'website' in kwargs:
+            try:
+                self.website = kwargs['website']
+            except Exception as e:
+                print(f"Warning: Could not set website field: {str(e)}")

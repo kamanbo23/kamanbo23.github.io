@@ -739,7 +739,30 @@ def create_opportunity(
         
         # Create and save the opportunity with proper error handling
         try:
-            db_opportunity = models.ResearchOpportunity(**opportunity_dict)
+            # Create opportunity dictionary with all valid fields
+            safe_opportunity_dict = {}
+            # Copy all the fields that are definitely in the model
+            for field in ["title", "organization", "description", "type", "location", 
+                         "deadline", "duration", "compensation", "requirements", 
+                         "fields", "contact_email", "virtual", "tags", 
+                         "applications", "likes"]:
+                if field in opportunity_dict:
+                    safe_opportunity_dict[field] = opportunity_dict[field]
+            
+            # Handle the website field separately to avoid the error
+            if "website" in opportunity_dict:
+                website_value = opportunity_dict["website"]
+                print(f"Website field detected with value: {website_value}")
+            
+            # Create the database object with safe fields first
+            db_opportunity = models.ResearchOpportunity(**safe_opportunity_dict)
+            
+            # Then set website attribute directly if it exists
+            if "website" in opportunity_dict:
+                setattr(db_opportunity, "website", opportunity_dict["website"])
+                print(f"Website attribute set directly to: {db_opportunity.website}")
+            
+            # Add to database and commit
             db.add(db_opportunity)
             db.commit()
             db.refresh(db_opportunity)
@@ -848,16 +871,41 @@ def update_opportunity(
     db: Session = Depends(get_db),
     current_admin: models.Admin = Depends(get_current_admin)
 ):
-    db_opportunity = db.query(models.ResearchOpportunity).filter(models.ResearchOpportunity.id == opportunity_id).first()
-    if not db_opportunity:
-        raise HTTPException(status_code=404, detail="Opportunity not found")
-    
-    for key, value in opportunity.dict().items():
-        setattr(db_opportunity, key, value)
-    
-    db.commit()
-    db.refresh(db_opportunity)
-    return db_opportunity
+    try:
+        print(f"Attempting to update opportunity {opportunity_id}")
+        
+        # Get existing opportunity
+        db_opportunity = db.query(models.ResearchOpportunity).filter(models.ResearchOpportunity.id == opportunity_id).first()
+        if not db_opportunity:
+            raise HTTPException(status_code=404, detail="Opportunity not found")
+        
+        # Update all fields except website
+        opportunity_dict = opportunity.dict()
+        website_value = opportunity_dict.pop("website", None)
+        
+        for key, value in opportunity_dict.items():
+            if hasattr(db_opportunity, key):
+                setattr(db_opportunity, key, value)
+        
+        # Handle website field separately
+        if website_value is not None:
+            print(f"Setting website value to: {website_value}")
+            try:
+                setattr(db_opportunity, "website", website_value)
+            except Exception as e:
+                print(f"Warning: Unable to set website field: {str(e)}")
+        
+        db.commit()
+        db.refresh(db_opportunity)
+        print(f"Opportunity {opportunity_id} updated successfully")
+        return db_opportunity
+    except Exception as e:
+        db.rollback()
+        print(f"Error updating opportunity: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating opportunity: {str(e)}"
+        )
 
 @app.delete("/opportunities/{opportunity_id}")
 def delete_opportunity(
